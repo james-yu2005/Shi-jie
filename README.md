@@ -1,0 +1,105 @@
+# 世界 (Shìjiè) — Chinese Reading & Study App
+
+An interactive Chinese-learning app. Paste any Chinese text, click words to
+see definitions, pinyin, example sentences, stroke order, and pronunciation.
+Save unknown words into a bucket of flashcards, drill yourself with two game
+modes (typing test + LLM-generated paragraphs), and play a daily image-
+description game graded by a LangGraph agent.
+
+## Features
+
+- **Reader (`/`)** – paste Chinese text, highlight any character or word to
+  open a side panel with:
+  - English definition
+  - Pinyin (with tones)
+  - Common example sentences + translations
+  - Stroke-order animation (via [makemeahanzi])
+  - Pronunciation (browser TTS + Google translate audio fallback)
+  - "Ask AI" button – sends the word/sentence to an LLM for a deeper
+    explanation
+  - "Add to bucket" – saves the word for later study
+- **Flashcards (`/flashcards`)** – bucket CRUD plus two game modes:
+  1. **Typing test**: each card asks you to type the English definition; the
+     real definition is revealed for self-grading.
+  2. **AI paragraph**: an LLM weaves all bucket words into a short Chinese
+     paragraph that opens in the Reader so you can study it.
+- **Daily Image (`/daily`)** – an image is shown; describe it in Chinese.
+  A LangGraph agent (built on LangChain + OpenAI Vision) checks if you
+  captured the key parts and flags grammar mistakes. You get **3 attempts**;
+  on the 2nd the agent hints at what you missed; on the 3rd it reveals the
+  full target description.
+- **Google sign-in** via NextAuth; everything (bucket, daily progress) is
+  persisted per user in **Supabase (PostgreSQL)** via Prisma.
+
+## Stack
+
+| Layer    | Tech                                                    |
+|----------|---------------------------------------------------------|
+| Frontend | Next.js 14 (App Router) · TypeScript · Tailwind CSS     |
+| Auth/DB  | NextAuth (Google) · Prisma · Supabase (PostgreSQL)      |
+| Backend  | FastAPI · LangChain · LangGraph · OpenAI                |
+| Dict     | CC-CEDICT (downloaded on first run)                     |
+| Strokes  | [makemeahanzi] SVG animations (served via jsDelivr CDN) |
+
+[makemeahanzi]: https://github.com/skishore/makemeahanzi
+
+## Quick start
+
+```bash
+# 1. Copy env template and fill in credentials
+cp .env.example frontend/.env.local
+cp .env.example backend/.env
+
+# 2. Fill in frontend/.env.local:
+#    - NEXTAUTH_SECRET  (run: openssl rand -base64 32)
+#    - GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
+#    - DATABASE_URL     (Supabase pooled connection string)
+#    - DIRECT_URL       (Supabase direct connection string)
+#    Both URLs are in Supabase dashboard → Project Settings → Database
+
+# 3. Backend (Python 3.10+)
+cd backend
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate     # macOS/Linux
+pip install -r requirements.txt
+python -m app.data.download_cedict   # one-time dictionary download
+uvicorn app.main:app --reload --port 8000
+
+# 4. Frontend (in a new terminal)
+cd frontend
+npm install
+npx prisma migrate dev --name init   # pushes schema to Supabase
+npm run dev
+```
+
+Open <http://localhost:3000>, sign in with Google, and start reading.
+
+## Project layout
+
+```
+shi-jie-new/
+├── frontend/         Next.js app (UI, API routes, auth, Prisma)
+│   ├── src/app/      App-router pages and API routes
+│   ├── src/lib/      Shared client helpers
+│   └── prisma/       Schema + migrations
+├── backend/          FastAPI + LangGraph service
+│   └── app/
+│       ├── main.py            FastAPI entry
+│       ├── dictionary.py      CC-CEDICT lookup
+│       ├── agents/            LangGraph workflows
+│       └── data/              CC-CEDICT raw data
+└── README.md
+```
+
+## Notes
+
+- Stroke-order GIFs aren't generated server-side; the UI renders an inline
+  SVG animation directly from the makemeahanzi CDN for any character in the
+  3000-glyph set. A static fallback PNG link is shown for rare characters.
+- The LangGraph daily-image agent uses `gpt-4o-mini`'s vision capability to
+  derive the target description on first request, then re-uses it for all
+  three attempts. Override the model with `OPENAI_VISION_MODEL`.
+- The database is **Supabase (PostgreSQL)**. Use the **Session-mode pooler** URL
+  (port 5432) as `DATABASE_URL` at runtime and the **direct** connection URL as
+  `DIRECT_URL` for `prisma migrate`. Both are in Supabase → Project Settings → Database.
