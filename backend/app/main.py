@@ -7,6 +7,9 @@ Exposes:
     POST /ai/explain           { word, context }     -> markdown explanation
     POST /ai/paragraph         { words: [..] }       -> chinese paragraph
     POST /daily/grade          { ... }               -> LangGraph image agent
+    POST /kg/analyze           { hanzi }             -> radicals + tags + pinyin
+    POST /kg/connection        { word_a, word_b, edges } -> short explanation
+    POST /kg/suggest           { focus, existing }   -> related word suggestions
 
 Authentication is delegated to the Next.js frontend; this service trusts
 its caller. In production you'd put it behind the same network or add a
@@ -23,7 +26,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from . import dictionary as dct
-from .agents import image_describer, paragraph_generator, word_explainer
+from . import hanzi_data
+from .agents import (
+    image_describer,
+    kg_analyzer,
+    paragraph_generator,
+    word_explainer,
+)
 
 load_dotenv()
 
@@ -46,10 +55,10 @@ app.add_middleware(
 # ---------- health ----------
 @app.get("/health")
 def health() -> dict[str, Any]:
-    has_cedict = dct.CEDICT_FILE.exists()
     return {
         "ok": True,
-        "cedict_loaded": has_cedict,
+        "cedict_loaded": dct.CEDICT_FILE.exists(),
+        "hanzi_dictionary_loaded": hanzi_data.is_loaded(),
         "openai_key_present": bool(os.environ.get("OPENAI_API_KEY")),
     }
 
@@ -150,3 +159,53 @@ def daily_grade(req: DailyGradeRequest) -> dict[str, Any]:
     except Exception as e:  # pragma: no cover
         raise HTTPException(502, f"agent error: {e}")
     return result
+
+
+# ---------- knowledge graph ----------
+class KgAnalyzeRequest(BaseModel):
+    hanzi: str = Field(..., min_length=1, max_length=32)
+    existing_tags: list[str] = Field(default_factory=list)
+
+
+@app.post("/kg/analyze")
+def kg_analyze(req: KgAnalyzeRequest) -> dict[str, Any]:
+    try:
+        return kg_analyzer.analyze(req.hanzi, req.existing_tags)
+    except Exception as e:  # pragma: no cover
+        raise HTTPException(502, f"analyze error: {e}")
+
+
+class KgConnectionRequest(BaseModel):
+    word_a: str
+    word_b: str
+    edges: list[dict] = Field(default_factory=list)
+
+
+@app.post("/kg/connection")
+def kg_connection(req: KgConnectionRequest) -> dict[str, str]:
+    try:
+        text = kg_analyzer.explain_connection(req.word_a, req.word_b, req.edges)
+    except Exception as e:  # pragma: no cover
+        raise HTTPException(502, f"LLM error: {e}")
+    return {"explanation": text}
+
+
+class KgSuggestRequest(BaseModel):
+    focus: str
+    existing: list[str] = Field(default_factory=list)
+    existing_tags: list[str] = Field(default_factory=list)
+    existing_radicals: list[str] = Field(default_factory=list)
+
+
+@app.post("/kg/suggest")
+def kg_suggest(req: KgSuggestRequest) -> dict[str, Any]:
+    try:
+        suggestions = kg_analyzer.suggest_related(
+            req.focus,
+            req.existing,
+            req.existing_tags,
+            req.existing_radicals,
+        )
+    except Exception as e:  # pragma: no cover
+        raise HTTPException(502, f"LLM error: {e}")
+    return {"suggestions": suggestions}

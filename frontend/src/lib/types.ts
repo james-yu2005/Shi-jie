@@ -49,3 +49,39 @@ export type DailyGame = {
   attemptsUsed: number;
   solved: boolean;
 };
+
+// ----- Knowledge graph -----
+export type KgEdgeType = "meaning" | "character";
+
+export type KgNode = {
+  id: string;
+  hanzi: string;
+  pinyin: string;
+  definition: string;
+  radicals: string[];
+  components: string[];
+  semanticTags: string[];
+  notes?: string | null;
+  createdAt: string;
+};
+
+export type KgEdge = {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  type: KgEdgeType;
+  reason: string;
+  weight: number;
+};
+
+export type KgGraph = {
+  nodes: KgNode[];
+  edges: KgEdge[];
+};
+
+export type KgSuggestion = {
+  hanzi: string;
+  pinyin: string;
+  definition: string;
+  reason: string;
+};

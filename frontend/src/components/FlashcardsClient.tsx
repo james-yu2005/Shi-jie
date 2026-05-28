@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Flashcard } from "@/lib/types";
 import { BucketEditor } from "./BucketEditor";
+import { PageHeader } from "./PageHeader";
 import { TypingGame } from "./TypingGame";
 
 type Mode = "manage" | "typing" | "paragraph";
@@ -88,33 +89,39 @@ export function FlashcardsClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-2xl font-bold">Flashcards</h1>
-        <span className="text-ink/60">·</span>
-        <span className="text-ink/70">{cards.length} word{cards.length === 1 ? "" : "s"} in your bucket</span>
-        <div className="ml-auto flex gap-2">
-          <button
-            className={mode === "manage" ? "btn-primary" : "btn-outline"}
-            onClick={() => setMode("manage")}
-          >
-            Manage bucket
-          </button>
-          <button
-            className={mode === "typing" ? "btn-primary" : "btn-outline"}
-            onClick={() => setMode("typing")}
-            disabled={cards.length === 0}
-          >
-            Typing test
-          </button>
-          <button
-            className={mode === "paragraph" ? "btn-primary" : "btn-outline"}
-            onClick={() => setMode("paragraph")}
-            disabled={cards.length === 0}
-          >
-            AI paragraph
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Flashcards"
+        subtitle="Save words you want to remember and drill yourself, or weave the bucket into an AI paragraph for fresh reading practice."
+        meta={
+          <>
+            {cards.length} word{cards.length === 1 ? "" : "s"} in your bucket
+          </>
+        }
+        actions={
+          <>
+            <button
+              className={mode === "manage" ? "btn-primary" : "btn-outline"}
+              onClick={() => setMode("manage")}
+            >
+              Manage bucket
+            </button>
+            <button
+              className={mode === "typing" ? "btn-primary" : "btn-outline"}
+              onClick={() => setMode("typing")}
+              disabled={cards.length === 0}
+            >
+              Typing test
+            </button>
+            <button
+              className={mode === "paragraph" ? "btn-primary" : "btn-outline"}
+              onClick={() => setMode("paragraph")}
+              disabled={cards.length === 0}
+            >
+              AI paragraph
+            </button>
+          </>
+        }
+      />
 
       {mode === "manage" && (
         <BucketEditor
@@ -131,10 +138,10 @@ export function FlashcardsClient({
         <div className="card space-y-4">
           <p className="text-sm text-ink/70">
             Generates a short Chinese paragraph using <b>every word</b> in your
-            bucket. Send it to the Reader to study it the same way you study
+            bucket. Open it in the Reader and study it the same way you study
             anything else.
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               className="btn-primary"
               onClick={generateParagraph}

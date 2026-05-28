@@ -53,9 +53,12 @@ export function BucketEditor({ cards, onAdd, onRemove, onUpdate }: Props) {
       </form>
 
       {cards.length === 0 ? (
-        <div className="card text-sm text-ink/60">
-          Your bucket is empty. Go to the <b>Reader</b>, click any unfamiliar
-          word, and press <b>Add to bucket</b>.
+        <div className="subtle-card text-sm text-ink/70">
+          Your bucket is empty. Add a word above, or jump to the{" "}
+          <a href="/" className="font-medium text-accent hover:underline">
+            Reader
+          </a>
+          , click any unfamiliar word, and press <b>Add to bucket</b>.
         </div>
       ) : (
         <div className="card divide-y divide-ink/10 p-0">

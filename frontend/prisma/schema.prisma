@@ -47,6 +47,8 @@ model User {
   sessions      Session[]
   flashcards    Flashcard[]
   dailyGames    DailyGame[]
+  kgNodes       KgNode[]
+  kgEdges       KgEdge[]
   createdAt     DateTime    @default(now())
 }
 
@@ -92,4 +94,49 @@ model DailyGame {
 
   @@unique([userId, dayKey])
   @@index([userId])
+}
+
+// ----- Knowledge graph models -----
+// A personal vocab graph: each KgNode is a word the user added.
+// Edges are derived from radical overlap (character) or shared
+// semantic tags (meaning). They're stored explicitly so the UI can
+// show them quickly and the quiz mode can pick connected pairs.
+model KgNode {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hanzi        String
+  pinyin       String
+  definition   String
+  radicals     Json     @default("[]") // string[]: shared subcomponents
+  components   Json     @default("[]") // string[]: per-character breakdown
+  semanticTags Json     @default("[]") // string[]: broad english tags
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  outgoing KgEdge[] @relation("KgEdgeSource")
+  incoming KgEdge[] @relation("KgEdgeTarget")
+
+  @@unique([userId, hanzi])
+  @@index([userId])
+}
+
+model KgEdge {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceId  String
+  targetId  String
+  source    KgNode   @relation("KgEdgeSource", fields: [sourceId], references: [id], onDelete: Cascade)
+  target    KgNode   @relation("KgEdgeTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  type      String   // "meaning" | "character"
+  reason    String
+  weight    Float    @default(1.0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, sourceId, targetId, type])
+  @@index([userId])
+  @@index([sourceId])
+  @@index([targetId])
 }

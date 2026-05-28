@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import type { DailyGame, GameAttempt } from "@/lib/types";
+import { PageHeader } from "./PageHeader";
 
 type GameWithMax = DailyGame & { maxAttempts: number };
 
@@ -77,15 +78,31 @@ export function DailyClient() {
   const finished = game.solved || remaining <= 0;
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr]">
-      <div className="space-y-3">
-        <h1 className="text-2xl font-bold">Daily image</h1>
-        <p className="text-sm text-ink/70">
-          Describe this image in Simplified Chinese. You have{" "}
-          <b>{game.maxAttempts}</b> attempts. On attempt 2 the agent hints at what
-          you missed; on attempt {game.maxAttempts} it reveals the full target.
-        </p>
-        <div className="overflow-hidden rounded-xl border border-ink/10 bg-white">
+    <div className="space-y-6">
+      <PageHeader
+        title="Daily image"
+        subtitle={
+          <>
+            Describe today's image in Simplified Chinese. You have{" "}
+            <b>{game.maxAttempts}</b> attempts. On attempt 2 the agent hints at
+            what you missed; on attempt {game.maxAttempts} it reveals the full
+            target.
+          </>
+        }
+        meta={
+          <>
+            Day {game.dayKey} ·{" "}
+            {finished
+              ? game.solved
+                ? "solved"
+                : "out of attempts"
+              : `${remaining} attempt${remaining === 1 ? "" : "s"} left`}
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr]">
+        <div className="overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={game.imageUrl}
@@ -93,55 +110,54 @@ export function DailyClient() {
             className="aspect-[4/3] w-full object-cover"
           />
         </div>
-        <div className="text-xs text-ink/50">Day: {game.dayKey}</div>
-      </div>
 
-      <div className="space-y-4">
-        <div className="card">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="label">Your description</span>
-            <span className="text-sm text-ink/60">
-              Attempt {Math.min(game.attemptsUsed + 1, game.maxAttempts)} /{" "}
-              {game.maxAttempts}
-            </span>
-          </div>
-          <textarea
-            className="textarea hanzi min-h-[100px] text-base"
-            placeholder="用中文描述这张图片…"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            disabled={finished || submitting}
-          />
-          <div className="mt-2 flex items-center gap-2">
-            <button
-              className="btn-primary"
-              onClick={submit}
-              disabled={finished || submitting || !text.trim()}
-            >
-              {submitting ? "Grading…" : "Submit"}
-            </button>
-            {finished && (
-              <span className="text-sm">
-                {game.solved
-                  ? "Solved! Come back tomorrow."
-                  : "Out of attempts. Come back tomorrow."}
+        <div className="space-y-4">
+          <div className="card">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="label">Your description</span>
+              <span className="text-sm text-ink/60">
+                Attempt {Math.min(game.attemptsUsed + 1, game.maxAttempts)} /{" "}
+                {game.maxAttempts}
               </span>
-            )}
+            </div>
+            <textarea
+              className="textarea hanzi min-h-[100px] text-base"
+              placeholder="用中文描述这张图片…"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              disabled={finished || submitting}
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                className="btn-primary"
+                onClick={submit}
+                disabled={finished || submitting || !text.trim()}
+              >
+                {submitting ? "Grading…" : "Submit"}
+              </button>
+              {finished && (
+                <span className="text-sm text-ink/70">
+                  {game.solved
+                    ? "Solved! Come back tomorrow."
+                    : "Out of attempts. Come back tomorrow."}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
 
-        {game.attempts.length > 0 && (
-          <div className="space-y-3">
-            {game.attempts.map((a, i) => (
-              <AttemptCard
-                key={game.attemptsUsed - i}
-                idx={game.attemptsUsed - i}
-                attempt={a}
-                isLatest={i === 0}
-              />
-            ))}
-          </div>
-        )}
+          {game.attempts.length > 0 && (
+            <div className="space-y-3">
+              {game.attempts.map((a, i) => (
+                <AttemptCard
+                  key={game.attemptsUsed - i}
+                  idx={game.attemptsUsed - i}
+                  attempt={a}
+                  isLatest={i === 0}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

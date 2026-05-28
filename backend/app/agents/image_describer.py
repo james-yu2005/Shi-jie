@@ -104,7 +104,7 @@ _GRADE_SYSTEM = (
     "Grade their attempt and respond with STRICT JSON:\n"
     "{\n"
     '  "score": <0-100 integer>,\n'
-    '  "solved": <true if score >= 75 AND >=70% of elements covered>,\n'
+    '  "solved": <true if score >= 60 AND >=55% of elements covered>,\n'
     '  "missing_elements": [<english element strings they failed to mention>],\n'
     '  "grammar_errors": [\n'
     '     {"wrong": "<their phrase>", "correct": "<fixed phrase>", '

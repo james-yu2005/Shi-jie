@@ -3,12 +3,14 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { Providers } from "./providers";
+import { HeaderNav } from "@/components/HeaderNav";
 import { UserMenu } from "@/components/UserMenu";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "世界 · Shìjiè",
-  description: "Read Chinese, build flashcards, play a daily image-description game.",
+  title: "世界 · Shìjiè — read, save, master Chinese",
+  description:
+    "Paste Chinese, look up words, build a flashcard bucket, grow a knowledge graph, and practise daily with an AI-graded image game.",
 };
 
 export default async function RootLayout({
@@ -20,32 +22,21 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
-      <body className="min-h-screen">
+      <body className="flex min-h-screen flex-col">
         <Providers>
-          <header className="sticky top-0 z-30 border-b border-ink/10 bg-paper/90 backdrop-blur">
-            <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
-              <Link href="/" className="flex items-baseline gap-2">
-                <span className="hanzi text-2xl font-bold leading-none">
+          <header className="sticky top-0 z-30 border-b border-ink/10 bg-paper/85 backdrop-blur">
+            <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
+              <Link href="/" className="group flex items-baseline gap-2">
+                <span className="hanzi serif text-2xl font-bold leading-none transition group-hover:text-accent">
                   世界
                 </span>
-                <span className="text-sm text-ink/60">Shìjiè</span>
+                <span className="hidden text-sm text-ink/60 sm:inline">
+                  Shìjiè
+                </span>
               </Link>
-              <nav className="flex items-center gap-1 text-sm">
-                <Link className="rounded px-3 py-1.5 hover:bg-ink/5" href="/">
-                  Reader
-                </Link>
-                <Link
-                  className="rounded px-3 py-1.5 hover:bg-ink/5"
-                  href="/flashcards"
-                >
-                  Flashcards
-                </Link>
-                <Link
-                  className="rounded px-3 py-1.5 hover:bg-ink/5"
-                  href="/daily"
-                >
-                  Daily
-                </Link>
+              <div className="flex items-center gap-3">
+                <HeaderNav />
+                <span className="hidden h-6 w-px bg-ink/10 sm:inline" />
                 <UserMenu
                   user={
                     session?.user
@@ -57,10 +48,29 @@ export default async function RootLayout({
                       : null
                   }
                 />
-              </nav>
+              </div>
             </div>
           </header>
-          <main className="mx-auto max-w-6xl px-6 py-6">{children}</main>
+
+          <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
+            {children}
+          </main>
+
+          <footer className="border-t border-ink/10 bg-paper">
+            <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-4 text-xs text-ink/60">
+              <span>
+                <span className="hanzi serif text-base">世界</span> · a small
+                Chinese reading & study app
+              </span>
+              <span className="flex flex-wrap items-center gap-3">
+                <span>Dictionary: CC-CEDICT</span>
+                <span>·</span>
+                <span>Strokes & decomposition: makemeahanzi</span>
+                <span>·</span>
+                <span>AI: OpenAI</span>
+              </span>
+            </div>
+          </footer>
         </Providers>
       </body>
     </html>

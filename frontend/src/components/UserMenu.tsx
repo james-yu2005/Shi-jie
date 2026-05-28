@@ -10,7 +10,7 @@ export function UserMenu({ user }: Props) {
     return (
       <button
         onClick={() => signIn("google")}
-        className="btn-outline ml-2"
+        className="btn-outline"
         title="Sign in with Google"
       >
         Sign in
@@ -24,7 +24,7 @@ export function UserMenu({ user }: Props) {
     .join("")
     .toUpperCase();
   return (
-    <div className="ml-2 flex items-center gap-2">
+    <div className="flex items-center gap-2">
       {user.image ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -32,17 +32,17 @@ export function UserMenu({ user }: Props) {
           alt=""
           width={28}
           height={28}
-          className="rounded-full"
+          className="rounded-full ring-1 ring-ink/10"
         />
       ) : (
-        <div className="grid h-7 w-7 place-items-center rounded-full bg-ink text-xs text-white">
+        <div className="grid h-7 w-7 place-items-center rounded-full bg-ink text-xs font-medium text-white">
           {initials}
         </div>
       )}
       <button
         onClick={() => signOut({ callbackUrl: "/" })}
-        className="text-sm text-ink/60 hover:text-ink"
-        title={user.email ?? undefined}
+        className="btn-ghost text-sm"
+        title={user.email ?? "Sign out"}
       >
         Sign out
       </button>

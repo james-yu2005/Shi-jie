@@ -11,15 +11,16 @@ export function WordPanel({ selection, onClose }: Props) {
   const [data, setData] = useState<DictLookup | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [aiMd, setAiMd] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
   const [added, setAdded] = useState<"idle" | "saving" | "ok" | "err">("idle");
+  const [graphed, setGraphed] = useState<"idle" | "saving" | "ok" | "err">(
+    "idle",
+  );
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     setData(null);
-    setAiMd(null);
     setAdded("idle");
+    setGraphed("idle");
     setError(null);
     if (!selection) return;
     let cancelled = false;
@@ -76,28 +77,22 @@ export function WordPanel({ selection, onClose }: Props) {
     setAdded(res.ok ? "ok" : "err");
   }, [data, selection]);
 
-  const onAskAI = useCallback(async () => {
+  const onAddToGraph = useCallback(async () => {
     if (!selection) return;
-    setAiLoading(true);
-    setAiMd(null);
-    try {
-      const res = await fetch("/api/ai/explain", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          word: selection.word,
-          context: selection.context,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
-      setAiMd(json.markdown as string);
-    } catch (e) {
-      setAiMd(`*Error:* ${String(e)}`);
-    } finally {
-      setAiLoading(false);
-    }
-  }, [selection]);
+    setGraphed("saving");
+    const e0 = data?.entries[0];
+    const res = await fetch("/api/kg", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        hanzi: selection.word,
+        pinyin: e0?.pinyin ?? "",
+        definition: (e0?.definitions ?? []).join("; "),
+        notes: selection.context || null,
+      }),
+    });
+    setGraphed(res.ok ? "ok" : "err");
+  }, [data, selection]);
 
   const examples = useMemo(() => {
     // Heuristic: pull short example-y definitions from the entries (CC-CEDICT
@@ -146,7 +141,7 @@ export function WordPanel({ selection, onClose }: Props) {
             <div className="label mb-1">Definition</div>
             {data.entries.length === 0 ? (
               <div className="text-sm text-ink/60">
-                No dictionary entry found. Try the AI explanation below.
+                No dictionary entry found.
               </div>
             ) : (
               <ul className="space-y-2">
@@ -208,13 +203,6 @@ export function WordPanel({ selection, onClose }: Props) {
               🔊 Play
             </button>
             <button
-              className="btn-outline"
-              onClick={onAskAI}
-              disabled={aiLoading}
-            >
-              {aiLoading ? "Thinking…" : "Ask AI"}
-            </button>
-            <button
               className="btn-accent"
               onClick={onAddToBucket}
               disabled={added === "saving" || added === "ok"}
@@ -225,17 +213,22 @@ export function WordPanel({ selection, onClose }: Props) {
                   ? "Saving…"
                   : "Add to bucket"}
             </button>
+            <button
+              className="btn-outline"
+              onClick={onAddToGraph}
+              disabled={graphed === "saving" || graphed === "ok"}
+              title="Adds to your knowledge graph and links to related words"
+            >
+              {graphed === "ok"
+                ? "In graph ✓"
+                : graphed === "saving"
+                  ? "Linking…"
+                  : graphed === "err"
+                    ? "Retry graph"
+                    : "+ Add to graph"}
+            </button>
             <audio ref={audioRef} className="hidden" />
           </div>
-
-          {aiMd && (
-            <div className="rounded-md border border-ink/10 bg-paper p-3 text-sm">
-              <div className="label mb-1">AI explanation</div>
-              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                {aiMd}
-              </pre>
-            </div>
-          )}
         </>
       )}
     </div>

@@ -28,8 +28,24 @@ description game graded by a LangGraph agent.
   captured the key parts and flags grammar mistakes. You get **3 attempts**;
   on the 2nd the agent hints at what you missed; on the 3rd it reveals the
   full target description.
-- **Google sign-in** via NextAuth; everything (bucket, daily progress) is
-  persisted per user in **Supabase (PostgreSQL)** via Prisma.
+- **Knowledge Graph (`/graph`)** – per-user vocabulary graph. Every word you
+  add becomes a node; edges are auto-derived:
+  - **Character** edges (red) connect words that share a radical, e.g. 拉↔推
+    via 扌.
+  - **Meaning** edges (blue dashed) connect words that share a semantic tag,
+    e.g. 说↔聊 via "communication".
+  An LLM analyses each new word for radicals, components, and tags; edge
+  computation itself is deterministic. The page has three modes:
+  1. **Explore** – interactive force-directed canvas, filter by edge type,
+    search, click a node to see its components, radicals, tags, neighbours,
+    and AI-generated suggestions for related words to add.
+  2. **Connection quiz** – the app picks a random connected pair and asks
+    you to explain the link; reveal the stored reason or have the AI
+    elaborate.
+  3. **AI sentence** – select any subset of nodes and have the model weave
+    them into a Chinese paragraph (sends straight to the Reader).
+- **Google sign-in** via NextAuth; everything (bucket, daily progress, graph)
+  is persisted per user in **Supabase (PostgreSQL)** via Prisma.
 
 ## Stack
 
@@ -87,7 +103,8 @@ shi-jie-new/
 │   └── app/
 │       ├── main.py            FastAPI entry
 │       ├── dictionary.py      CC-CEDICT lookup
-│       ├── agents/            LangGraph workflows
+│       ├── agents/            word_explainer, paragraph_generator,
+│       │                      image_describer, kg_analyzer
 │       └── data/              CC-CEDICT raw data
 └── README.md
 ```
@@ -100,6 +117,16 @@ shi-jie-new/
 - The LangGraph daily-image agent uses `gpt-4o-mini`'s vision capability to
   derive the target description on first request, then re-uses it for all
   three attempts. Override the model with `OPENAI_VISION_MODEL`.
+- The Knowledge Graph's radical + decomposition data comes from a local
+  copy of [makemeahanzi]'s `dictionary.txt`. Download it once with
+  `python -m app.data.download_hanzi_dict` from `backend/` (the same way
+  you ran the CC-CEDICT download). Without it the analyzer still works
+  for pinyin/definition/tags but won't be able to derive radicals.
+- After pulling the Knowledge Graph changes, run
+  `npx prisma migrate dev --name add_knowledge_graph` from `frontend/` to add
+  the `KgNode` and `KgEdge` tables before opening `/graph`. If you had
+  nodes from the old LLM-only analyzer, click **↻ Rebuild edges** on the
+  graph page after upgrading to re-normalise them.
 - The database is **Supabase (PostgreSQL)**. Use the **Session-mode pooler** URL
   (port 5432) as `DATABASE_URL` at runtime and the **direct** connection URL as
   `DIRECT_URL` for `prisma migrate`. Both are in Supabase → Project Settings → Database.

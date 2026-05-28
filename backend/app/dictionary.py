@@ -76,34 +76,6 @@ class Entry:
     def to_dict(self) -> dict:
         return asdict(self)
 
-
-# ---- minimal fallback so dev works before user runs download script ----
-_FALLBACK: list[Entry] = []
-
-
-def _fallback_entry(t: str, s: str, p: str, defs: list[str]) -> Entry:
-    return Entry(
-        traditional=t, simplified=s,
-        pinyin_numbered=p, pinyin=numbered_to_marks(p),
-        definitions=defs,
-    )
-
-
-for t, s, p, d in [
-    ("你", "你", "ni3", ["you (informal, as opposed to courteous 您)"]),
-    ("好", "好", "hao3", ["good", "well", "proper", "OK", "fine"]),
-    ("你好", "你好", "ni3 hao3", ["hello", "hi"]),
-    ("世界", "世界", "shi4 jie4", ["world", "CL:個|个"]),
-    ("我", "我", "wo3", ["I", "me", "my"]),
-    ("是", "是", "shi4", ["to be", "yes", "is", "are"]),
-    ("中文", "中文", "Zhong1 wen2", ["the Chinese language"]),
-    ("學習", "学习", "xue2 xi2", ["to learn", "to study"]),
-    ("謝謝", "谢谢", "xie4 xie5", ["to thank", "thanks"]),
-    ("漢字", "汉字", "Han4 zi4", ["Chinese character", "CL:個|个,塊|块"]),
-]:
-    _FALLBACK.append(_fallback_entry(t, s, p, d))
-
-
 # ---- main parse ----
 _LINE_RE = re.compile(r"^(\S+) (\S+) \[([^\]]+)\] /(.+)/\s*$")
 
@@ -126,18 +98,13 @@ def _parse_line(line: str) -> Entry | None:
 def _load() -> tuple[dict[str, list[Entry]], list[str]]:
     """Returns ({word -> entries}, [all_keys_sorted_by_len_desc])."""
     table: dict[str, list[Entry]] = {}
-    if CEDICT_FILE.exists():
-        with CEDICT_FILE.open("r", encoding="utf-8") as f:
-            for line in f:
-                if line.startswith("#") or not line.strip():
-                    continue
-                e = _parse_line(line)
-                if not e:
-                    continue
-                for key in {e.simplified, e.traditional}:
-                    table.setdefault(key, []).append(e)
-    else:
-        for e in _FALLBACK:
+    with CEDICT_FILE.open("r", encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("#") or not line.strip():
+                continue
+            e = _parse_line(line)
+            if not e:
+                continue
             for key in {e.simplified, e.traditional}:
                 table.setdefault(key, []).append(e)
 
