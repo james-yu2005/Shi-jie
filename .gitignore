@@ -46,3 +46,4 @@ frontend/prisma/migrations/dev/
 # Data downloads (large, fetched via script)
 backend/app/data/cedict_ts.u8
 backend/app/data/cedict.txt
+backend/app/data/hanzi_dictionary.txt

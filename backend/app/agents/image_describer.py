@@ -44,6 +44,8 @@ class GameState(TypedDict, total=False):
     hint: str
     reveal: str | None
 
+# ---------- difficulty level -----
+difficulty_level = "easy"
 
 # ---------- LLMs ----------
 def _vision_llm() -> ChatOpenAI:
@@ -59,15 +61,14 @@ def _text_llm() -> ChatOpenAI:
         temperature=0.0,
     )
 
-
 # ---------- nodes ----------
 _DESCRIBE_SYSTEM = (
     "You are a Mandarin teacher building a description target for a guessing "
     "game. Look at the image and respond with strict JSON:\n"
     '{ "description_zh": "<2-4 short Simplified-Chinese sentences describing '
-    'the scene at HSK4 level>", "elements": ["<key visible element 1>", '
+    f'the scene for a {difficulty_level}>", "elements": ["<key visible element 1>", '
     '"<key visible element 2>", "..."] }\n'
-    "Elements should be 4-7 concise English noun phrases (subject, action, "
+    "Elements should be 3-6 concise English noun phrases (subject, action, "
     "setting, notable details). Output ONLY the JSON."
 )
 
@@ -97,7 +98,8 @@ def describe_image(state: GameState) -> GameState:
 
 
 _GRADE_SYSTEM = (
-    "You are a strict but kind Mandarin grader for an image-description "
+    "You are a strict but kind Mandarin grader for an image-description ",
+    f"You are grading at the level of: {difficulty_level}"
     "guessing game. You will receive: (a) the target Chinese description, "
     "(b) the key visible elements, (c) the learner's Chinese attempt, "
     "(d) attempt number out of max attempts.\n\n"

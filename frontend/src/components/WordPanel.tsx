@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import type { DictLookup } from "@/lib/types";
 
 type Props = {
@@ -8,6 +9,8 @@ type Props = {
 };
 
 export function WordPanel({ selection, onClose }: Props) {
+  const { status } = useSession();
+  const signedIn = status === "authenticated";
   const [data, setData] = useState<DictLookup | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +101,7 @@ export function WordPanel({ selection, onClose }: Props) {
     // Heuristic: pull short example-y definitions from the entries (CC-CEDICT
     // often includes example sentences in parens; we just show the raw list).
     return data?.entries.flatMap((e) =>
-      e.definitions.filter((d) => /[。.!?！？]/.test(d) || /e\.g\./i.test(d)),
+      e.definitions.filter((d) => /[。.!?!?]/.test(d) || /e\.g\./i.test(d)),
     );
   }, [data]);
 
@@ -128,7 +131,7 @@ export function WordPanel({ selection, onClose }: Props) {
           className="text-ink/40 hover:text-ink"
           aria-label="Close"
         >
-          ×
+          x
         </button>
       </div>
 
@@ -205,7 +208,10 @@ export function WordPanel({ selection, onClose }: Props) {
             <button
               className="btn-accent"
               onClick={onAddToBucket}
-              disabled={added === "saving" || added === "ok"}
+              disabled={
+                !signedIn || added === "saving" || added === "ok"
+              }
+              title={!signedIn ? "Sign in to save words" : undefined}
             >
               {added === "ok"
                 ? "Added ✓"
@@ -216,8 +222,14 @@ export function WordPanel({ selection, onClose }: Props) {
             <button
               className="btn-outline"
               onClick={onAddToGraph}
-              disabled={graphed === "saving" || graphed === "ok"}
-              title="Adds to your knowledge graph and links to related words"
+              disabled={
+                !signedIn || graphed === "saving" || graphed === "ok"
+              }
+              title={
+                !signedIn
+                  ? "Sign in to add to your knowledge graph"
+                  : "Adds to your knowledge graph and links to related words"
+              }
             >
               {graphed === "ok"
                 ? "In graph ✓"
