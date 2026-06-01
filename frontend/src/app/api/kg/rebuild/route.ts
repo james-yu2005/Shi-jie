@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { backendFetch } from "@/lib/backend";
-import { getSessionUser } from "@/lib/auth";
+import { withAuth } from "@/lib/auth";
 import { asStringArray, deriveEdges } from "@/lib/kg";
 import { prisma } from "@/lib/prisma";
 
@@ -19,10 +19,7 @@ type AnalyzeResponse = {
  * makemeahanzi dictionary) so old inconsistent strings get normalised and
  * new edges fall into place.
  */
-export async function POST() {
-  const user = await getSessionUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
+export const POST = withAuth(async (user) => {
   const nodes = await prisma.kgNode.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: "asc" },
@@ -108,4 +105,4 @@ export async function POST() {
     nodesUpdated: updated.length,
     edgesCreated: toCreate.length,
   });
-}
+});

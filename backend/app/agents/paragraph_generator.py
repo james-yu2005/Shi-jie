@@ -6,11 +6,11 @@ study any pasted Chinese text.
 """
 from __future__ import annotations
 
-import os
 from typing import Iterable
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+
+from ..llm import text_llm
 
 _SYSTEM = (
     "You are a Mandarin teacher. Given a list of Chinese words, write ONE "
@@ -21,16 +21,9 @@ _SYSTEM = (
 )
 
 
-def _llm() -> ChatOpenAI:
-    return ChatOpenAI(
-        model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
-        temperature=0.7,
-    )
-
-
 def generate(words: list[str]) -> str:
     if not words:
         return ""
     user = "Words: " + ", ".join(words)
     msgs: Iterable = [SystemMessage(content=_SYSTEM), HumanMessage(content=user)]
-    return _llm().invoke(msgs).content  # type: ignore[return-value]
+    return text_llm(0.7).invoke(msgs).content  # type: ignore[return-value]

@@ -195,7 +195,7 @@ export function GraphNodePanel({
         <div className="label mb-1">Connections</div>
         {neighbors.length === 0 && (
           <div className="text-sm text-ink/60">
-            No edges yet. Add more words and they'll auto-link by radical or
+            No edges yet. Add more words and they&apos;ll auto-link by radical or
             meaning.
           </div>
         )}

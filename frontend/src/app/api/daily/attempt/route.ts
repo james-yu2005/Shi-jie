@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth";
+import { withAuth } from "@/lib/auth";
 import { backendFetch } from "@/lib/backend";
 import { DAILY_MAX_ATTEMPTS } from "@/lib/daily";
 
@@ -20,9 +21,7 @@ type GradeResult = {
 
 const MAX_ATTEMPTS = DAILY_MAX_ATTEMPTS;
 
-export async function POST(req: Request) {
-  const user = await getSessionUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+export const POST = withAuth(async (user, req) => {
   const parsed = Body.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
@@ -57,6 +56,7 @@ export async function POST(req: Request) {
         max_attempts: MAX_ATTEMPTS,
         target_desc: game.targetDesc ?? null,
         target_elements: targetElements,
+        difficulty: game.difficulty ?? "easy",
       },
     });
   } catch (e) {
@@ -76,14 +76,21 @@ export async function POST(req: Request) {
   const newAttempts = [...prevAttempts, newAttempt];
   const solved = result.solved || game.solved;
 
+  // targetElements is a nullable Json column: keep the cached value, else use
+  // the freshly graded elements, else store SQL NULL.
+  const nextTargetElements: Prisma.NullableJsonNullValueInput | Prisma.InputJsonValue =
+    Array.isArray(game.targetElements)
+      ? (game.targetElements as Prisma.InputJsonValue)
+      : (result.target_elements ?? Prisma.DbNull);
+
   const updated = await prisma.dailyGame.update({
     where: { id: game.id },
     data: {
-      attempts: newAttempts,
+      attempts: newAttempts as Prisma.InputJsonValue,
       attemptsUsed: attemptNumber,
       solved,
       targetDesc: game.targetDesc ?? result.target_desc ?? null,
-      targetElements: game.targetElements ?? result.target_elements ?? null,
+      targetElements: nextTargetElements,
     },
   });
 
@@ -92,5 +99,6 @@ export async function POST(req: Request) {
     attemptsUsed: updated.attemptsUsed,
     solved: updated.solved,
     maxAttempts: MAX_ATTEMPTS,
+    difficulty: updated.difficulty,
   });
-}
+});

@@ -1,5 +1,6 @@
 // Thin server-side helper for talking to the Python backend.
 const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
+const SHARED_SECRET = process.env.BACKEND_SHARED_SECRET;
 
 export async function backendFetch<T>(
   path: string,
@@ -7,6 +8,7 @@ export async function backendFetch<T>(
 ): Promise<T> {
   const headers = new Headers(init?.headers);
   if (init?.json !== undefined) headers.set("content-type", "application/json");
+  if (SHARED_SECRET) headers.set("x-backend-secret", SHARED_SECRET);
   const res = await fetch(`${BACKEND}${path}`, {
     ...init,
     headers,
@@ -27,3 +29,11 @@ export async function backendFetch<T>(
 }
 
 export const BACKEND_URL = BACKEND;
+
+/** Generate one Chinese paragraph from a word list (shared by paragraph + KG-sentence routes). */
+export function generateParagraph(words: string[]): Promise<{ paragraph: string }> {
+  return backendFetch<{ paragraph: string }>("/ai/paragraph", {
+    method: "POST",
+    json: { words },
+  });
+}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth";
+import { withAuth } from "@/lib/auth";
 import { attemptsNewestFirst, DAILY_MAX_ATTEMPTS } from "@/lib/daily";
 import type { GameAttempt } from "@/lib/types";
 
@@ -12,9 +13,44 @@ function imageForDay(key: string): string {
   return `https://picsum.photos/seed/shijie-${key}/800/600`;
 }
 
-export async function GET() {
-  const user = await getSessionUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+const PatchBody = z.object({
+  difficulty: z.enum(["easy", "medium", "hard"]),
+});
+
+export const PATCH = withAuth(async (user, req) => {
+  const parsed = PatchBody.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
+  }
+
+  const key = dayKey();
+  const game = await prisma.dailyGame.findUnique({
+    where: { userId_dayKey: { userId: user.id, dayKey: key } },
+  });
+  if (!game) {
+    return NextResponse.json(
+      { error: "no game yet — GET /api/daily first" },
+      { status: 404 },
+    );
+  }
+
+  // Lock the choice once the challenge has started.
+  if (game.attemptsUsed > 0) {
+    return NextResponse.json(
+      { error: "difficulty is locked after the first attempt" },
+      { status: 409 },
+    );
+  }
+
+  const updated = await prisma.dailyGame.update({
+    where: { id: game.id },
+    data: { difficulty: parsed.data.difficulty },
+  });
+
+  return NextResponse.json({ difficulty: updated.difficulty });
+});
+
+export const GET = withAuth(async (user) => {
   const key = dayKey();
   const game = await prisma.dailyGame.upsert({
     where: { userId_dayKey: { userId: user.id, dayKey: key } },
@@ -38,6 +74,7 @@ export async function GET() {
       attemptsUsed: game.attemptsUsed,
       solved: game.solved,
       maxAttempts: DAILY_MAX_ATTEMPTS,
+      difficulty: game.difficulty ?? "easy",
     },
   });
-}
+});

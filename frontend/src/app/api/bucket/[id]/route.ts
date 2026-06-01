@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth";
+import { withAuth } from "@/lib/auth";
+
+type Ctx = { params: { id: string } };
 
 const PatchBody = z.object({
   pinyin: z.string().optional(),
@@ -9,12 +11,7 @@ const PatchBody = z.object({
   notes: z.string().optional().nullable(),
 });
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } },
-) {
-  const user = await getSessionUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+export const PATCH = withAuth<Ctx>(async (user, req, { params }) => {
   const parsed = PatchBody.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
@@ -28,18 +25,13 @@ export async function PATCH(
     data: parsed.data,
   });
   return NextResponse.json({ flashcard: updated });
-}
+});
 
-export async function DELETE(
-  _req: Request,
-  { params }: { params: { id: string } },
-) {
-  const user = await getSessionUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+export const DELETE = withAuth<Ctx>(async (user, _req, { params }) => {
   const card = await prisma.flashcard.findUnique({ where: { id: params.id } });
   if (!card || card.userId !== user.id) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
   await prisma.flashcard.delete({ where: { id: card.id } });
   return NextResponse.json({ ok: true });
-}
+});

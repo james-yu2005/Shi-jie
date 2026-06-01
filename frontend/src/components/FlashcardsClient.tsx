@@ -1,80 +1,94 @@
 "use client";
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
 import type { Flashcard } from "@/lib/types";
+import { apiJson, swrFetcher } from "@/lib/api";
 import { BucketEditor } from "./BucketEditor";
+import { ModeTabs } from "./ModeTabs";
 import { PageHeader } from "./PageHeader";
+import { ReviewMode } from "./ReviewMode";
 import { TypingGame } from "./TypingGame";
 
-type Mode = "manage" | "typing" | "paragraph";
+type Mode = "manage" | "review" | "typing" | "paragraph";
 
-export function FlashcardsClient({
-  initialCards,
-}: {
-  initialCards: Flashcard[];
-}) {
+export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }) {
   const router = useRouter();
-  const [cards, setCards] = useState<Flashcard[]>(initialCards);
+  const { data, mutate } = useSWR<{ flashcards: Flashcard[] }>(
+    "/api/bucket",
+    swrFetcher,
+    { fallbackData: { flashcards: initialCards }, revalidateOnFocus: false },
+  );
+  const cards = data?.flashcards ?? initialCards;
   const [mode, setMode] = useState<Mode>("manage");
   const [paragraph, setParagraph] = useState<string | null>(null);
   const [genLoading, setGenLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [starterLoading, setStarterLoading] = useState(false);
+  const [starterMsg, setStarterMsg] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    const r = await fetch("/api/bucket");
-    if (r.ok) {
-      const j = await r.json();
-      setCards(j.flashcards as Flashcard[]);
-    }
-  }, []);
-
-  const remove = useCallback(
-    async (id: string) => {
-      const r = await fetch(`/api/bucket/${id}`, { method: "DELETE" });
-      if (r.ok) setCards((cs) => cs.filter((c) => c.id !== id));
-    },
-    [],
+  const setCards = useCallback(
+    (updater: (cs: Flashcard[]) => Flashcard[]) =>
+      mutate(
+        (prev) => ({ flashcards: updater(prev?.flashcards ?? []) }),
+        { revalidate: false },
+      ),
+    [mutate],
   );
 
-  const update = useCallback(
-    async (id: string, patch: Partial<Flashcard>) => {
-      const r = await fetch(`/api/bucket/${id}`, {
+  const remove = useCallback(async (id: string) => {
+    try {
+      await apiJson(`/api/bucket/${id}`, { method: "DELETE" });
+      void setCards((cs) => cs.filter((c) => c.id !== id));
+    } catch { /* leave list untouched */ }
+  }, [setCards]);
+
+  const update = useCallback(async (id: string, patch: Partial<Flashcard>) => {
+    try {
+      const j = await apiJson<{ flashcard: Flashcard }>(`/api/bucket/${id}`, {
         method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(patch),
+        json: patch,
       });
-      if (r.ok) {
-        const j = await r.json();
-        setCards((cs) => cs.map((c) => (c.id === id ? j.flashcard : c)));
-      }
-    },
-    [],
-  );
+      void setCards((cs) => cs.map((c) => (c.id === id ? j.flashcard : c)));
+    } catch { /* ignore */ }
+  }, [setCards]);
 
-  const add = useCallback(
-    async (hanzi: string, pinyin: string, definition: string) => {
-      const r = await fetch("/api/bucket", {
+  const add = useCallback(async (hanzi: string, pinyin: string, definition: string) => {
+    try {
+      const j = await apiJson<{ flashcard: Flashcard }>("/api/bucket", {
         method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ hanzi, pinyin, definition }),
+        json: { hanzi, pinyin, definition },
       });
-      if (r.ok) await refresh();
-    },
-    [refresh],
-  );
+      void setCards((cs) => {
+        const exists = cs.some((c) => c.id === j.flashcard.id);
+        return exists ? cs.map((c) => (c.id === j.flashcard.id ? j.flashcard : c)) : [j.flashcard, ...cs];
+      });
+    } catch { /* ignore */ }
+  }, [setCards]);
+
+  const loadStarterDeck = useCallback(async () => {
+    setStarterLoading(true);
+    setStarterMsg(null);
+    try {
+      const j = await apiJson<{ added: number }>("/api/bucket/starter", { method: "POST" });
+      setStarterMsg(j.added > 0 ? `Added ${j.added} new words!` : "All starter words already in bucket.");
+      void mutate(); // refresh list from server
+    } catch (e) {
+      setStarterMsg(`Error: ${String(e)}`);
+    } finally {
+      setStarterLoading(false);
+    }
+  }, [mutate]);
 
   const generateParagraph = useCallback(async () => {
     setError(null);
     setGenLoading(true);
     try {
-      const r = await fetch("/api/ai/paragraph", {
+      const j = await apiJson<{ paragraph: string }>("/api/ai/paragraph", {
         method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ words: cards.map((c) => c.hanzi) }),
+        json: { words: cards.map((c) => c.hanzi) },
       });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
-      setParagraph(j.paragraph as string);
+      setParagraph(j.paragraph);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -87,6 +101,9 @@ export function FlashcardsClient({
     router.push(`/?text=${encodeURIComponent(paragraph)}`);
   }, [paragraph, router]);
 
+  // Count cards due for review (dueAt <= now or null)
+  const dueCount = cards.filter((c) => !c.dueAt || new Date(c.dueAt) <= new Date()).length;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -95,41 +112,56 @@ export function FlashcardsClient({
         meta={
           <>
             {cards.length} word{cards.length === 1 ? "" : "s"} in your bucket
+            {dueCount > 0 && (
+              <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-white">
+                {dueCount} due
+              </span>
+            )}
           </>
         }
         actions={
-          <>
-            <button
-              className={mode === "manage" ? "btn-primary" : "btn-outline"}
-              onClick={() => setMode("manage")}
-            >
-              Manage bucket
-            </button>
-            <button
-              className={mode === "typing" ? "btn-primary" : "btn-outline"}
-              onClick={() => setMode("typing")}
-              disabled={cards.length === 0}
-            >
-              Typing test
-            </button>
-            <button
-              className={mode === "paragraph" ? "btn-primary" : "btn-outline"}
-              onClick={() => setMode("paragraph")}
-              disabled={cards.length === 0}
-            >
-              AI paragraph
-            </button>
-          </>
+          <ModeTabs<Mode>
+            active={mode}
+            onChange={setMode}
+            tabs={[
+              { id: "manage", label: "Manage" },
+              { id: "review", label: `Review${dueCount > 0 ? ` (${dueCount})` : ""}` },
+              { id: "typing", label: "Typing test", disabled: cards.length === 0 },
+              { id: "paragraph", label: "AI paragraph", disabled: cards.length === 0 },
+            ]}
+          />
         }
       />
 
       {mode === "manage" && (
-        <BucketEditor
-          cards={cards}
-          onAdd={add}
-          onRemove={remove}
-          onUpdate={update}
-        />
+        <>
+          <BucketEditor cards={cards} onAdd={add} onRemove={remove} onUpdate={update} />
+          {/* Starter deck — visible when bucket is small */}
+          {cards.length < 10 && (
+            <div className="subtle-card flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="font-medium text-sm">New here?</div>
+                <p className="text-xs text-ink/60">Load 100 essential HSK 1–2 words to get started instantly.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  className="btn-outline"
+                  onClick={loadStarterDeck}
+                  disabled={starterLoading}
+                >
+                  {starterLoading ? "Loading…" : "Load starter deck (100 words)"}
+                </button>
+                {starterMsg && (
+                  <span className="text-xs text-ink/60">{starterMsg}</span>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {mode === "review" && (
+        <ReviewMode onDone={() => setMode("manage")} />
       )}
 
       {mode === "typing" && cards.length > 0 && <TypingGame cards={cards} />}
@@ -142,17 +174,11 @@ export function FlashcardsClient({
             anything else.
           </p>
           <div className="flex flex-wrap gap-2">
-            <button
-              className="btn-primary"
-              onClick={generateParagraph}
-              disabled={genLoading || cards.length === 0}
-            >
+            <button className="btn-primary" onClick={generateParagraph} disabled={genLoading || cards.length === 0}>
               {genLoading ? "Generating…" : "Generate paragraph"}
             </button>
             {paragraph && (
-              <button className="btn-accent" onClick={sendToReader}>
-                Open in Reader →
-              </button>
+              <button className="btn-accent" onClick={sendToReader}>Open in Reader →</button>
             )}
           </div>
           {error && <div className="text-sm text-red-600">{error}</div>}

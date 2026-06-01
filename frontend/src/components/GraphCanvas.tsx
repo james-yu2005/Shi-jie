@@ -47,6 +47,10 @@ export function GraphCanvas({
   const justPannedRef = useRef(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [, setTick] = useState(0);
+  // Animation-loop control so we can pause when the layout settles.
+  const runningRef = useRef(false);
+  const frameRef = useRef(0);
+  const settleFramesRef = useRef(0);
 
   const rerender = useCallback(() => setTick((t) => t + 1), []);
 
@@ -78,66 +82,96 @@ export function GraphCanvas({
       ),
     [edges, showMeaning, showCharacter],
   );
+  // Keep the latest edges readable from the (stable) animation callback.
+  const visibleEdgesRef = useRef(visibleEdges);
+  visibleEdgesRef.current = visibleEdges;
 
-  // Continuous force-directed layout. Always runs at ~60fps so dragging,
-  // adding/removing nodes, and toggling filters all feel responsive.
-  useEffect(() => {
-    if (nodes.length === 0) return;
-    let frame = 0;
-    function step() {
-      const pos = positionsRef.current;
-      const ids = Object.keys(pos);
-      for (let i = 0; i < ids.length; i++) {
-        const a = pos[ids[i]];
-        for (let j = i + 1; j < ids.length; j++) {
-          const b = pos[ids[j]];
-          const dx = b.x - a.x;
-          const dy = b.y - a.y;
-          const d2 = Math.max(dx * dx + dy * dy, 1);
-          const d = Math.sqrt(d2);
-          const f = 8000 / d2;
-          const fx = (dx / d) * f;
-          const fy = (dy / d) * f;
-          a.vx -= fx;
-          a.vy -= fy;
-          b.vx += fx;
-          b.vy += fy;
-        }
-      }
-      for (const e of visibleEdges) {
-        const a = pos[e.sourceId];
-        const b = pos[e.targetId];
-        if (!a || !b) continue;
+  // One physics frame. Returns once the layout has been still for a while so
+  // the loop can pause instead of burning CPU on a settled graph.
+  const step = useCallback(() => {
+    const pos = positionsRef.current;
+    const ids = Object.keys(pos);
+    for (let i = 0; i < ids.length; i++) {
+      const a = pos[ids[i]];
+      for (let j = i + 1; j < ids.length; j++) {
+        const b = pos[ids[j]];
         const dx = b.x - a.x;
         const dy = b.y - a.y;
-        const d = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
-        const rest = 150;
-        const k = 0.035;
-        const f = k * (d - rest);
+        const d2 = Math.max(dx * dx + dy * dy, 1);
+        const d = Math.sqrt(d2);
+        const f = 8000 / d2;
         const fx = (dx / d) * f;
         const fy = (dy / d) * f;
-        a.vx += fx;
-        a.vy += fy;
-        b.vx -= fx;
-        b.vy -= fy;
+        a.vx -= fx;
+        a.vy -= fy;
+        b.vx += fx;
+        b.vy += fy;
       }
-      for (const id of ids) {
-        const n = pos[id];
-        n.vx += (W / 2 - n.x) * 0.0015;
-        n.vy += (H / 2 - n.y) * 0.0015;
-        n.vx *= 0.82;
-        n.vy *= 0.82;
-        if (draggingRef.current?.id !== id) {
-          n.x += n.vx;
-          n.y += n.vy;
-        }
-      }
-      setTick((t) => t + 1);
-      frame = requestAnimationFrame(step);
     }
-    frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
-  }, [nodes, visibleEdges]);
+    for (const e of visibleEdgesRef.current) {
+      const a = pos[e.sourceId];
+      const b = pos[e.targetId];
+      if (!a || !b) continue;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const d = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
+      const rest = 150;
+      const k = 0.035;
+      const f = k * (d - rest);
+      const fx = (dx / d) * f;
+      const fy = (dy / d) * f;
+      a.vx += fx;
+      a.vy += fy;
+      b.vx -= fx;
+      b.vy -= fy;
+    }
+    let maxV2 = 0;
+    for (const id of ids) {
+      const n = pos[id];
+      n.vx += (W / 2 - n.x) * 0.0015;
+      n.vy += (H / 2 - n.y) * 0.0015;
+      n.vx *= 0.82;
+      n.vy *= 0.82;
+      if (draggingRef.current?.id !== id) {
+        n.x += n.vx;
+        n.y += n.vy;
+      }
+      const v2 = n.vx * n.vx + n.vy * n.vy;
+      if (v2 > maxV2) maxV2 = v2;
+    }
+    setTick((t) => t + 1);
+
+    // Pause once everything has been essentially motionless for ~40 frames
+    // (and we're not mid-drag). Interaction/data changes call ensureRunning.
+    if (draggingRef.current == null && maxV2 < 0.04) {
+      settleFramesRef.current += 1;
+    } else {
+      settleFramesRef.current = 0;
+    }
+    if (settleFramesRef.current > 40) {
+      settleFramesRef.current = 0;
+      runningRef.current = false;
+      return;
+    }
+    frameRef.current = requestAnimationFrame(step);
+  }, []);
+
+  const ensureRunning = useCallback(() => {
+    if (runningRef.current) return;
+    runningRef.current = true;
+    settleFramesRef.current = 0;
+    frameRef.current = requestAnimationFrame(step);
+  }, [step]);
+
+  // (Re)start the layout whenever the node set or visible edges change.
+  useEffect(() => {
+    if (nodes.length === 0) return;
+    ensureRunning();
+    return () => {
+      cancelAnimationFrame(frameRef.current);
+      runningRef.current = false;
+    };
+  }, [nodes, visibleEdges, ensureRunning]);
 
   const neighborIds = useMemo(() => {
     if (!selectedId) return new Set<string>();
@@ -176,6 +210,7 @@ export function GraphCanvas({
     if (!p) return;
     draggingRef.current = { id, offsetX: wx - p.x, offsetY: wy - p.y };
     e.currentTarget.setPointerCapture?.(e.pointerId);
+    ensureRunning(); // wake the layout so neighbours react to the drag
   }
 
   function onSvgPointerDown(e: React.PointerEvent<SVGSVGElement>) {
@@ -201,6 +236,7 @@ export function GraphCanvas({
       p.y = wy - drag.offsetY;
       p.vx = 0;
       p.vy = 0;
+      ensureRunning();
       rerender();
       return;
     }

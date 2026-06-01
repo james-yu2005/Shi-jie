@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { KgEdge, KgNode } from "@/lib/types";
+import { apiJson } from "@/lib/api";
 
 type Props = {
   nodes: KgNode[];
@@ -93,15 +94,12 @@ export function GraphQuiz({ nodes, edges }: Props) {
     if (!pair) return;
     setAiCheck({ explanation: "", loading: true, error: null });
     try {
-      const r = await fetch("/api/kg/connection", {
+      const j = await apiJson<{ explanation: string }>("/api/kg/connection", {
         method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sourceId: pair.a.id, targetId: pair.b.id }),
+        json: { sourceId: pair.a.id, targetId: pair.b.id },
       });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
       setAiCheck({
-        explanation: j.explanation as string,
+        explanation: j.explanation,
         loading: false,
         error: null,
       });

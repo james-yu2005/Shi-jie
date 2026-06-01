@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { backendFetch } from "@/lib/backend";
-import { getSessionUser } from "@/lib/auth";
-import { asStringArray, deriveEdges } from "@/lib/kg";
+import { withAuth } from "@/lib/auth";
+import { asStringArray, deriveEdges, edgeToClient, nodeToClient } from "@/lib/kg";
 import { prisma } from "@/lib/prisma";
-import type { KgEdge, KgGraph, KgNode } from "@/lib/types";
 
 const PostBody = z.object({
   hanzi: z.string().min(1).max(32),
@@ -21,52 +20,7 @@ type AnalyzeResponse = {
   semantic_tags: string[];
 };
 
-function nodeToClient(n: {
-  id: string;
-  hanzi: string;
-  pinyin: string;
-  definition: string;
-  radicals: unknown;
-  components: unknown;
-  semanticTags: unknown;
-  notes: string | null;
-  createdAt: Date;
-}): KgNode {
-  return {
-    id: n.id,
-    hanzi: n.hanzi,
-    pinyin: n.pinyin,
-    definition: n.definition,
-    radicals: asStringArray(n.radicals),
-    components: asStringArray(n.components),
-    semanticTags: asStringArray(n.semanticTags),
-    notes: n.notes,
-    createdAt: n.createdAt.toISOString(),
-  };
-}
-
-function edgeToClient(e: {
-  id: string;
-  sourceId: string;
-  targetId: string;
-  type: string;
-  reason: string;
-  weight: number;
-}): KgEdge {
-  return {
-    id: e.id,
-    sourceId: e.sourceId,
-    targetId: e.targetId,
-    type: e.type === "character" ? "character" : "meaning",
-    reason: e.reason,
-    weight: e.weight,
-  };
-}
-
-export async function GET(): Promise<NextResponse<KgGraph | { error: string }>> {
-  const user = await getSessionUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
+export const GET = withAuth(async (user) => {
   const [nodes, edges] = await Promise.all([
     prisma.kgNode.findMany({
       where: { userId: user.id },
@@ -79,12 +33,9 @@ export async function GET(): Promise<NextResponse<KgGraph | { error: string }>> 
     nodes: nodes.map(nodeToClient),
     edges: edges.map(edgeToClient),
   });
-}
+});
 
-export async function POST(req: Request) {
-  const user = await getSessionUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
+export const POST = withAuth(async (user, req) => {
   const parsed = PostBody.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
@@ -199,4 +150,4 @@ export async function POST(req: Request) {
     edges: newEdges.map(edgeToClient),
     created: true,
   });
-}
+});

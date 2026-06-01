@@ -26,41 +26,14 @@ and a ``meaning`` edge if they share any semantic tag.
 from __future__ import annotations
 
 import json
-import os
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
 
 from .. import dictionary as cedict
 from .. import hanzi_data
-
-
-def _llm() -> ChatOpenAI:
-    return ChatOpenAI(
-        model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
-        temperature=0.0,
-    )
-
-
-def _safe_json(raw: Any) -> dict:
-    if isinstance(raw, list):
-        raw = "".join(p.get("text", "") for p in raw if isinstance(p, dict))
-    raw = (raw or "").strip()
-    if raw.startswith("```"):
-        raw = raw.strip("`")
-        if raw.lower().startswith("json"):
-            raw = raw[4:].lstrip()
-    try:
-        return json.loads(raw)
-    except Exception:
-        start, end = raw.find("{"), raw.rfind("}")
-        if start >= 0 and end > start:
-            try:
-                return json.loads(raw[start : end + 1])
-            except Exception:
-                pass
-    return {}
+from ..dictionary import is_hanzi as _is_hanzi
+from ..llm import safe_json, text_llm
 
 
 # ---------- local lookups ----------
@@ -110,11 +83,6 @@ def _components_for_word(hanzi: str) -> tuple[list[str], list[str]]:
     return radicals[:6], lines[:6]
 
 
-def _is_hanzi(ch: str) -> bool:
-    code = ord(ch)
-    return 0x4E00 <= code <= 0x9FFF or 0x3400 <= code <= 0x4DBF
-
-
 # ---------- analyze ----------
 _TAG_SYSTEM = (
     "You assign 3-6 broad lowercase English topic tags to a Chinese word "
@@ -145,7 +113,7 @@ def _semantic_tags(
         SystemMessage(content=_TAG_SYSTEM),
         HumanMessage(content=json.dumps(payload, ensure_ascii=False)),
     ]
-    data = _safe_json(_llm().invoke(msgs).content)
+    data = safe_json(text_llm(0.0).invoke(msgs).content)
     raw = data.get("tags") or []
     cleaned: list[str] = []
     for item in raw:
@@ -191,7 +159,7 @@ def explain_connection(word_a: str, word_b: str, edges: list[dict]) -> str:
         SystemMessage(content=_CONNECTION_SYSTEM),
         HumanMessage(content=json.dumps(payload, ensure_ascii=False)),
     ]
-    return str(_llm().invoke(msgs).content or "").strip()
+    return str(text_llm(0.0).invoke(msgs).content or "").strip()
 
 
 # ---------- suggest ----------
@@ -233,7 +201,7 @@ def suggest_related(
         SystemMessage(content=_SUGGEST_SYSTEM),
         HumanMessage(content=json.dumps(payload, ensure_ascii=False)),
     ]
-    data = _safe_json(_llm().invoke(msgs).content)
+    data = safe_json(text_llm(0.0).invoke(msgs).content)
     items = data.get("suggestions") or []
     out: list[dict] = []
     for item in items:

@@ -27,6 +27,10 @@ export type Flashcard = {
   pinyin: string;
   definition: string;
   notes?: string | null;
+  dueAt?: string | null;
+  interval: number;
+  ease: number;
+  reviewCount: number;
   createdAt: string;
 };
 
@@ -40,6 +44,8 @@ export type GameAttempt = {
   reveal: string | null;
 };
 
+export type DailyDifficulty = "easy" | "medium" | "hard";
+
 export type DailyGame = {
   id: string;
   dayKey: string;
@@ -48,6 +54,18 @@ export type DailyGame = {
   attempts: GameAttempt[];
   attemptsUsed: number;
   solved: boolean;
+  difficulty: DailyDifficulty | null;
+};
+
+export type DailyHistoryEntry = {
+  dayKey: string;   // YYYY-MM-DD
+  solved: boolean;
+  attemptsUsed: number;
+};
+
+export type DailyStats = {
+  streak: number;
+  history: DailyHistoryEntry[]; // last 30 days
 };
 
 // ----- Knowledge graph -----

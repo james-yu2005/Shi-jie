@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth";
+import { withAuth } from "@/lib/auth";
 
 const PostBody = z.object({
   hanzi: z.string().min(1),
@@ -10,19 +10,15 @@ const PostBody = z.object({
   notes: z.string().optional().nullable(),
 });
 
-export async function GET() {
-  const user = await getSessionUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+export const GET = withAuth(async (user) => {
   const cards = await prisma.flashcard.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json({ flashcards: cards });
-}
+});
 
-export async function POST(req: Request) {
-  const user = await getSessionUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+export const POST = withAuth(async (user, req) => {
   const parsed = PostBody.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
@@ -38,4 +34,4 @@ export async function POST(req: Request) {
     },
   });
   return NextResponse.json({ flashcard: card });
-}
+});

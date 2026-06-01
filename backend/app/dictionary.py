@@ -6,8 +6,8 @@ Parses the CC-CEDICT text file once on import and exposes:
     - stroke_url(char) -> str       jsDelivr URL to the animated SVG
     - audio_url(text) -> str        Google Translate TTS URL (no key)
 
-If the dictionary file is missing, a tiny built-in fallback of common
-words is used so the API still returns something useful during dev.
+The CC-CEDICT file must be present (run ``data/download_cedict.py`` once);
+``_load`` raises ``FileNotFoundError`` if it is missing.
 """
 from __future__ import annotations
 
@@ -120,7 +120,8 @@ def lookup(word: str) -> list[Entry]:
 _HAN_RE = re.compile(r"[\u3400-\u9fff\uf900-\ufaff]")
 
 
-def _is_hanzi(ch: str) -> bool:
+def is_hanzi(ch: str) -> bool:
+    """True if ``ch`` is a CJK ideograph (the single shared definition)."""
     return bool(_HAN_RE.match(ch))
 
 
@@ -132,7 +133,7 @@ def segment(text: str, max_word_len: int = 6) -> list[str]:
     n = len(text)
     while i < n:
         ch = text[i]
-        if not _is_hanzi(ch):
+        if not is_hanzi(ch):
             out.append(ch)
             i += 1
             continue
@@ -167,20 +168,20 @@ _STROKE_ANIM_BASE = (
 
 
 def stroke_data_url(char: str) -> str | None:
-    if len(char) != 1 or not _is_hanzi(char):
+    if len(char) != 1 or not is_hanzi(char):
         return None
     return _STROKE_BASE.format(cp=ord(char))
 
 
 def stroke_svg_url(char: str) -> str | None:
     """Animated stroke-order SVG URL for a single hanzi (None for non-hanzi)."""
-    if len(char) != 1 or not _is_hanzi(char):
+    if len(char) != 1 or not is_hanzi(char):
         return None
     return _STROKE_SVG_BASE.format(cp=ord(char))
 
 
 def stroke_still_url(char: str) -> str | None:
-    if len(char) != 1 or not _is_hanzi(char):
+    if len(char) != 1 or not is_hanzi(char):
         return None
     return _STROKE_ANIM_BASE.format(cp=ord(char))
 

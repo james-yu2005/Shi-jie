@@ -20,6 +20,10 @@ export default async function FlashcardsPage() {
         pinyin: c.pinyin,
         definition: c.definition,
         notes: c.notes,
+        dueAt: c.dueAt?.toISOString() ?? null,
+        interval: c.interval,
+        ease: c.ease,
+        reviewCount: c.reviewCount,
         createdAt: c.createdAt.toISOString(),
       }))}
     />

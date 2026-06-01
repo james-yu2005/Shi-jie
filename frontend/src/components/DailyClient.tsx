@@ -1,58 +1,73 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
-import type { DailyGame, GameAttempt } from "@/lib/types";
+import { memo, useCallback, useEffect, useState } from "react";
+import useSWR from "swr";
+import type { DailyGame, DailyDifficulty, GameAttempt, DailyStats } from "@/lib/types";
+import { apiJson, swrFetcher } from "@/lib/api";
+import { HeatmapCalendar } from "./HeatmapCalendar";
 import { PageHeader } from "./PageHeader";
 
 type GameWithMax = DailyGame & { maxAttempts: number };
 
+const DIFFICULTIES: DailyDifficulty[] = ["easy", "medium", "hard"];
+
+const SEGMENT_BTN =
+  "rounded-md px-3 py-1 text-sm capitalize transition hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent data-[active=true]:bg-ink data-[active=true]:text-white data-[active=true]:hover:bg-ink";
+
+function scoreBadgeClass(attempt: GameAttempt): string {
+  const base = "rounded-full px-2 py-0.5 text-xs font-medium";
+  if (attempt.solved) return `${base} bg-green-100 text-green-700`;
+  if (attempt.score >= 60) return `${base} bg-yellow-100 text-yellow-800`;
+  return `${base} bg-red-100 text-red-700`;
+}
+
 export function DailyClient() {
-  const [game, setGame] = useState<GameWithMax | null>(null);
-  const [loading, setLoading] = useState(true);
+  const {
+    data,
+    error: loadError,
+    isLoading,
+    mutate,
+  } = useSWR<{ game: GameWithMax }>("/api/daily", swrFetcher, {
+    revalidateOnFocus: false,
+  });
+  const game = data?.game ?? null;
+
+  const { data: stats } = useSWR<DailyStats>("/api/daily/history", swrFetcher, {
+    revalidateOnFocus: false,
+  });
+
   const [submitting, setSubmitting] = useState(false);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const r = await fetch("/api/daily");
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
-      setGame(j.game as GameWithMax);
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [difficulty, setDifficulty] = useState<DailyDifficulty>("easy");
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (game) setDifficulty(game.difficulty ?? "easy");
+  }, [game?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = useCallback(async () => {
     if (!game || !text.trim()) return;
     setSubmitting(true);
     setError(null);
     try {
-      const r = await fetch("/api/daily/attempt", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text: text.trim() }),
-      });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
-      const attempt = j.attempt as GameAttempt;
-      setGame((g) =>
-        g
-          ? {
-              ...g,
-              attempts: [attempt, ...g.attempts],
-              attemptsUsed: j.attemptsUsed,
-              solved: j.solved,
-            }
-          : g,
+      const j = await apiJson<{
+        attempt: GameAttempt;
+        attemptsUsed: number;
+        solved: boolean;
+      }>("/api/daily/attempt", { method: "POST", json: { text: text.trim() } });
+      await mutate(
+        (prev) =>
+          prev
+            ? {
+                game: {
+                  ...prev.game,
+                  attempts: [j.attempt, ...prev.game.attempts],
+                  attemptsUsed: j.attemptsUsed,
+                  solved: j.solved,
+                },
+              }
+            : prev,
+        { revalidate: false },
       );
       setText("");
     } catch (e) {
@@ -60,22 +75,52 @@ export function DailyClient() {
     } finally {
       setSubmitting(false);
     }
-  }, [game, text]);
+  }, [game, text, mutate]);
 
-  if (loading) return <div className="card text-sm text-ink/60">Loading today's image…</div>;
-  if (error)
+  const chooseDifficulty = useCallback(
+    async (d: DailyDifficulty) => {
+      if (!game || game.attemptsUsed > 0) return;
+      const previous = difficulty;
+      setDifficulty(d);
+      try {
+        const j = await apiJson<{ difficulty: DailyDifficulty }>("/api/daily", {
+          method: "PATCH",
+          json: { difficulty: d },
+        });
+        await mutate(
+          (prev) => (prev ? { game: { ...prev.game, difficulty: j.difficulty } } : prev),
+          { revalidate: false },
+        );
+      } catch (e) {
+        setDifficulty(previous);
+        setError(String(e));
+      }
+    },
+    [game, difficulty, mutate],
+  );
+
+  if (isLoading && !game)
+    return <div className="card text-sm text-ink/60">Loading today&apos;s image…</div>;
+
+  const displayError = error ?? (loadError ? String(loadError) : null);
+  if (displayError)
     return (
       <div className="card space-y-2">
-        <div className="text-red-600">{error}</div>
-        <button className="btn-outline" onClick={load}>
+        <div className="text-red-600">{displayError}</div>
+        <button className="btn-outline" onClick={() => { setError(null); void mutate(); }}>
           Retry
         </button>
       </div>
     );
+
   if (!game) return null;
 
   const remaining = game.maxAttempts - game.attemptsUsed;
   const finished = game.solved || remaining <= 0;
+  const difficultyLocked = game.attemptsUsed > 0;
+  const statusLabel = finished
+    ? game.solved ? "solved" : "out of attempts"
+    : `${remaining} attempt${remaining === 1 ? "" : "s"} left`;
 
   return (
     <div className="space-y-6">
@@ -83,21 +128,43 @@ export function DailyClient() {
         title="Daily image"
         subtitle={
           <>
-            Describe today's image in Simplified Chinese. You have{" "}
+            Describe today&apos;s image in Simplified Chinese. You have{" "}
             <b>{game.maxAttempts}</b> attempts. On attempt 2 the agent hints at
             what you missed; on attempt {game.maxAttempts} it reveals the full
             target.
           </>
         }
         meta={
-          <>
-            Day {game.dayKey} ·{" "}
-            {finished
-              ? game.solved
-                ? "solved"
-                : "out of attempts"
-              : `${remaining} attempt${remaining === 1 ? "" : "s"} left`}
-          </>
+          <span className="flex items-center gap-2">
+            Day {game.dayKey} · {statusLabel}
+            {stats && stats.streak > 0 && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                🔥 {stats.streak}-day streak
+              </span>
+            )}
+          </span>
+        }
+        actions={
+          <div className="flex flex-col items-end gap-1">
+            <span className="label">Difficulty</span>
+            <div className="flex items-center gap-1 rounded-lg border border-ink/15 bg-white p-1">
+              {DIFFICULTIES.map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => chooseDifficulty(d)}
+                  disabled={difficultyLocked}
+                  data-active={difficulty === d}
+                  className={SEGMENT_BTN}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+            {difficultyLocked && (
+              <span className="text-xs text-ink/50">Locked for today</span>
+            )}
+          </div>
         }
       />
 
@@ -108,6 +175,7 @@ export function DailyClient() {
             src={game.imageUrl}
             alt="Today's image"
             className="aspect-[4/3] w-full object-cover"
+            decoding="async"
           />
         </div>
 
@@ -159,11 +227,35 @@ export function DailyClient() {
           )}
         </div>
       </div>
+
+      {/* Streak & history */}
+      {stats && (
+        <div className="card space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="label">Activity</div>
+              {stats.streak > 0 && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                  🔥 {stats.streak}-day streak
+                </span>
+              )}
+            </div>
+            <button
+              className="btn-ghost text-xs"
+              onClick={() => setShowHistory((v) => !v)}
+            >
+              {showHistory ? "Hide" : "Show"} calendar
+            </button>
+          </div>
+
+          {showHistory && <HeatmapCalendar history={stats.history} />}
+        </div>
+      )}
     </div>
   );
 }
 
-function AttemptCard({
+const AttemptCard = memo(function AttemptCard({
   idx,
   attempt,
   isLatest,
@@ -176,15 +268,7 @@ function AttemptCard({
     <div className="card space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold">Attempt {idx}</span>
-        <span
-          className={
-            attempt.solved
-              ? "rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700"
-              : attempt.score >= 60
-                ? "rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800"
-                : "rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700"
-          }
-        >
+        <span className={scoreBadgeClass(attempt)}>
           {attempt.score}/100 {attempt.solved ? "· solved" : ""}
         </span>
       </div>
@@ -232,4 +316,4 @@ function AttemptCard({
       )}
     </div>
   );
-}
+});

@@ -1,11 +1,13 @@
 "use client";
 import { useCallback, useMemo, useState } from "react";
 import type { KgEdge, KgNode } from "@/lib/types";
+import { apiJson } from "@/lib/api";
 import { GraphCanvas } from "./GraphCanvas";
 import { GraphNodePanel } from "./GraphNodePanel";
 import { GraphQuiz } from "./GraphQuiz";
 import { GraphSentence } from "./GraphSentence";
 import { GraphStats } from "./GraphStats";
+import { ModeTabs } from "./ModeTabs";
 import { PageHeader } from "./PageHeader";
 
 type Mode = "explore" | "quiz" | "sentence";
@@ -55,17 +57,10 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
       setAdding(true);
       setAddError(null);
       try {
-        const r = await fetch("/api/kg", {
+        const j = await apiJson<AddResponse>("/api/kg", {
           method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ hanzi: trimmed }),
+          json: { hanzi: trimmed },
         });
-        const j = (await r.json()) as AddResponse | { error: unknown };
-        if (!r.ok || !("node" in j)) {
-          throw new Error(
-            "error" in j ? JSON.stringify(j.error) : `HTTP ${r.status}`,
-          );
-        }
         mergeAddResponse(j);
         setSelectedId(j.node.id);
       } catch (e) {
@@ -114,14 +109,13 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
     setRebuilding(true);
     setRebuildMsg(null);
     try {
-      const r = await fetch("/api/kg/rebuild", { method: "POST" });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
-      const refresh = await fetch("/api/kg");
-      const data = (await refresh.json()) as {
-        nodes: KgNode[];
-        edges: KgEdge[];
-      };
+      const j = await apiJson<{ nodesUpdated: number; edgesCreated: number }>(
+        "/api/kg/rebuild",
+        { method: "POST" },
+      );
+      const data = await apiJson<{ nodes: KgNode[]; edges: KgEdge[] }>(
+        "/api/kg",
+      );
       setNodes(data.nodes);
       setEdges(data.edges);
       setRebuildMsg(
@@ -156,26 +150,23 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
               {rebuilding ? "Rebuilding…" : "↻ Rebuild edges"}
             </button>
             <span className="mx-1 hidden h-6 w-px self-center bg-ink/10 sm:inline" />
-            <button
-              className={mode === "explore" ? "btn-primary" : "btn-outline"}
-              onClick={() => setMode("explore")}
-            >
-              Explore
-            </button>
-            <button
-              className={mode === "quiz" ? "btn-primary" : "btn-outline"}
-              onClick={() => setMode("quiz")}
-              disabled={edges.length === 0}
-            >
-              Connection quiz
-            </button>
-            <button
-              className={mode === "sentence" ? "btn-primary" : "btn-outline"}
-              onClick={() => setMode("sentence")}
-              disabled={nodes.length === 0}
-            >
-              AI sentence
-            </button>
+            <ModeTabs<Mode>
+              active={mode}
+              onChange={setMode}
+              tabs={[
+                { id: "explore", label: "Explore" },
+                {
+                  id: "quiz",
+                  label: "Connection quiz",
+                  disabled: edges.length === 0,
+                },
+                {
+                  id: "sentence",
+                  label: "AI sentence",
+                  disabled: nodes.length === 0,
+                },
+              ]}
+            />
           </>
         }
       />

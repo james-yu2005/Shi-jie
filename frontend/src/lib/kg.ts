@@ -1,5 +1,49 @@
 // Shared helpers for the knowledge-graph routes and UI.
-import type { KgEdgeType, KgNode } from "./types";
+import type { KgEdge, KgEdgeType, KgNode } from "./types";
+
+/** A Prisma KgNode row (the fields we read), mapped to the client shape. */
+export function nodeToClient(n: {
+  id: string;
+  hanzi: string;
+  pinyin: string;
+  definition: string;
+  radicals: unknown;
+  components: unknown;
+  semanticTags: unknown;
+  notes: string | null;
+  createdAt: Date;
+}): KgNode {
+  return {
+    id: n.id,
+    hanzi: n.hanzi,
+    pinyin: n.pinyin,
+    definition: n.definition,
+    radicals: asStringArray(n.radicals),
+    components: asStringArray(n.components),
+    semanticTags: asStringArray(n.semanticTags),
+    notes: n.notes,
+    createdAt: n.createdAt.toISOString(),
+  };
+}
+
+/** A Prisma KgEdge row, mapped to the client shape. */
+export function edgeToClient(e: {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  type: string;
+  reason: string;
+  weight: number;
+}): KgEdge {
+  return {
+    id: e.id,
+    sourceId: e.sourceId,
+    targetId: e.targetId,
+    type: (e.type === "character" ? "character" : "meaning") as KgEdgeType,
+    reason: e.reason,
+    weight: e.weight,
+  };
+}
 
 export type AnalyzedWord = {
   pinyin: string;

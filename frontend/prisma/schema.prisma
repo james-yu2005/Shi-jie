@@ -63,18 +63,24 @@ model VerificationToken {
 // ----- App models -----
 // One flashcard = one saved word/phrase for a user.
 model Flashcard {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  hanzi      String
-  pinyin     String
-  definition String
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hanzi        String
+  pinyin       String
+  definition   String
+  notes        String?
+  // SM-2 spaced repetition fields
+  dueAt        DateTime? // null = new card (due immediately)
+  interval     Int       @default(1)   // days until next review
+  ease         Float     @default(2.5) // ease factor
+  reviewCount  Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@unique([userId, hanzi])
   @@index([userId])
+  @@index([userId, dueAt])
 }
 
 // One daily-image game session for a user (one per local day).
@@ -85,6 +91,7 @@ model DailyGame {
   dayKey         String   // YYYY-MM-DD UTC
   imageUrl       String
   targetDesc     String?
+  difficulty     String?
   targetElements Json?    // array of key elements cached after first attempt
   attempts       Json     @default("[]") // array of {prompt, score, feedback, …}
   attemptsUsed   Int      @default(0)

@@ -5,11 +5,11 @@ English-language explanation than the bare dictionary entry.
 """
 from __future__ import annotations
 
-import os
 from typing import Iterable
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+
+from ..llm import text_llm
 
 _SYSTEM = (
     "You are an expert Mandarin tutor. The user is reading a Chinese text and "
@@ -24,16 +24,9 @@ _SYSTEM = (
 )
 
 
-def _llm() -> ChatOpenAI:
-    return ChatOpenAI(
-        model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
-        temperature=0.3,
-    )
-
-
 def explain(word: str, context: str | None = None) -> str:
     user = f"Word/phrase: {word}"
     if context:
         user += f"\nContext sentence: {context}"
     msgs: Iterable = [SystemMessage(content=_SYSTEM), HumanMessage(content=user)]
-    return _llm().invoke(msgs).content  # type: ignore[return-value]
+    return text_llm(0.3).invoke(msgs).content  # type: ignore[return-value]
