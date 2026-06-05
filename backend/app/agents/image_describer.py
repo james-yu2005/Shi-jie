@@ -27,7 +27,6 @@ from langgraph.graph import END, START, StateGraph
 
 from ..llm import safe_json, text_llm, vision_llm
 
-
 # ---------- state ----------
 class GameState(TypedDict, total=False):
     image_url: str
@@ -46,19 +45,18 @@ class GameState(TypedDict, total=False):
     reveal: str | None
 
 # ---------- difficulty level -----
-# Extra grading instructions injected per request based on the user's choice.
 _DIFFICULTY_RULES = {
     "easy": (
         "Difficulty: EASY. Be lenient and encouraging. Mark solved if the "
-        "score >= 40 and the learner covered ~30% of the key elements. "
+        "score >= 45 and the learner covered ~35% of the key elements. "
         "Overlook minor grammar slips."
     ),
     "medium": (
         "Difficulty: MEDIUM. Use standard grading. Mark solved if the score "
-        ">= 50 and the learner covered ~45% of the key elements."
+        ">= 55 and the learner covered ~45% of the key elements."
     ),
     "hard": (
-        "Difficulty: HARD. Be strict. Mark solved only if the score >= 60 and "
+        "Difficulty: HARD. Be strict. Mark solved only if the score >= 70 and "
         "the learner covered ~60% of the key elements. Demand correct grammar "
         "and richer vocabulary."
     ),
@@ -74,7 +72,6 @@ _DESCRIBE_SYSTEM = (
     "Elements should be 3-6 concise English noun phrases (subject, action, "
     "setting, notable details). Output ONLY the JSON."
 )
-
 
 def describe_image(state: GameState) -> GameState:
     if state.get("target_desc"):
@@ -118,7 +115,7 @@ def _grade_system(difficulty: str) -> str:
         '"explanation": "<english 1-sentence reason>"}\n'
         "  ],\n"
         '  "hint": "<english coaching note; on attempt 1 stay vague; on attempt 2 '
-        "mention 1-2 specific missing elements without giving the full sentence; "
+        "mention 2-3 specific missing elements without giving the full sentence; "
         'on the last attempt give the full reveal in reveal>",\n'
         '  "reveal": "<full Chinese target on the last attempt_number OR when '
         'solved; otherwise null>"\n'
@@ -164,16 +161,13 @@ def _build_graph():
     g.add_edge("grade_attempt", END)
     return g.compile()
 
-
 _GRAPH = None
-
 
 def get_graph():
     global _GRAPH
     if _GRAPH is None:
         _GRAPH = _build_graph()
     return _GRAPH
-
 
 def run(
     *,
