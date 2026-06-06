@@ -169,7 +169,7 @@ export function DailyClient() {
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr]">
-        <div className="overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm lg:sticky lg:top-20 lg:self-start">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={game.imageUrl}
@@ -179,7 +179,7 @@ export function DailyClient() {
           />
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto lg:pr-2">
           <div className="card">
             <div className="mb-2 flex items-center justify-between">
               <span className="label">Your description</span>
@@ -293,6 +293,23 @@ const AttemptCard = memo(function AttemptCard({
         <div className="text-sm">
           <span className="label">You missed</span>{" "}
           {attempt.missing_elements.join(", ")}
+        </div>
+      )}
+
+      {attempt.vocab_hints && attempt.vocab_hints.length > 0 && (
+        <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+          <div className="label mb-2 text-blue-900">Learn these words</div>
+          <div className="space-y-2">
+            {attempt.vocab_hints.map((vocab, i) => (
+              <div key={i} className="rounded bg-white p-2 shadow-sm">
+                <div className="flex items-baseline gap-2">
+                  <span className="hanzi text-lg font-semibold">{vocab.hanzi}</span>
+                  <span className="text-sm text-ink/60">{vocab.pinyin}</span>
+                </div>
+                <div className="mt-0.5 text-sm text-ink/80">{vocab.definition}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

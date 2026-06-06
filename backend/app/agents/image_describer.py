@@ -26,6 +26,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 
 from ..llm import safe_json, text_llm, vision_llm
+from .. import dictionary as dct
 
 # ---------- state ----------
 class GameState(TypedDict, total=False):
@@ -43,6 +44,7 @@ class GameState(TypedDict, total=False):
     grammar_errors: list[dict]
     hint: str
     reveal: str | None
+    vocab_hints: list[dict]
 
 # ---------- difficulty level -----
 _DIFFICULTY_RULES = {
@@ -124,6 +126,46 @@ def _grade_system(difficulty: str) -> str:
     )
 
 
+def _extract_vocab_hints(target_desc: str | None, attempt_num: int, max_attempts: int) -> list[dict]:
+    """Extract 1-2 vocabulary words from target description to help learner.
+    
+    Attempt 1: 1 word, Attempt 2: 1-2 more words, Final attempt: none (show reveal instead)
+    """
+    if not target_desc or attempt_num >= max_attempts:
+        return []
+    
+    # Segment the target description
+    words = dct.segment(target_desc)
+    # Keep only words with dictionary entries (actual vocab, not particles)
+    vocab_candidates = []
+    for w in words:
+        if not any(dct.is_hanzi(c) for c in w):
+            continue
+        entries = dct.lookup(w)
+        if entries and len(w) >= 2:  # multi-character words only
+            vocab_candidates.append((w, entries[0]))
+    
+    if not vocab_candidates:
+        return []
+    
+    # For attempt 1, give 1 word; attempt 2, give 1-2 more words
+    count = 1 if attempt_num == 1 else min(2, len(vocab_candidates))
+    # Offset by previous attempts to avoid repeating
+    start_idx = (attempt_num - 1)
+    hints = []
+    for i in range(start_idx, min(start_idx + count, len(vocab_candidates))):
+        if i >= len(vocab_candidates):
+            break
+        word, entry = vocab_candidates[i]
+        hints.append({
+            "hanzi": word,
+            "pinyin": entry.pinyin,
+            "definition": "; ".join(entry.definitions[:2]),  # first 2 definitions
+        })
+    
+    return hints
+
+
 def grade_attempt(state: GameState) -> GameState:
     payload = {
         "target_description_zh": state.get("target_desc", ""),
@@ -141,6 +183,14 @@ def grade_attempt(state: GameState) -> GameState:
     # safety: force reveal on last attempt
     if state.get("attempt_number", 1) >= state.get("max_attempts", 3):
         data.setdefault("reveal", state.get("target_desc"))
+    
+    # Extract vocabulary hints to help learner
+    vocab_hints = _extract_vocab_hints(
+        state.get("target_desc"),
+        state.get("attempt_number", 1),
+        state.get("max_attempts", 3),
+    )
+    
     return {
         "score": int(data.get("score", 0)),
         "solved": bool(data.get("solved", False)),
@@ -148,6 +198,7 @@ def grade_attempt(state: GameState) -> GameState:
         "grammar_errors": list(data.get("grammar_errors", []) or []),
         "hint": str(data.get("hint", "") or ""),
         "reveal": data.get("reveal"),
+        "vocab_hints": vocab_hints,
     }
 
 
@@ -198,6 +249,7 @@ def run(
         "grammar_errors": out.get("grammar_errors", []),
         "hint": out.get("hint", ""),
         "reveal": out.get("reveal"),
+        "vocab_hints": out.get("vocab_hints", []),
         "target_desc": out.get("target_desc"),
         "target_elements": out.get("target_elements", []),
     }

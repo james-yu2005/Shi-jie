@@ -10,7 +10,21 @@ function dayKey(date = new Date()): string {
 }
 
 function imageForDay(key: string): string {
-  return `https://picsum.photos/seed/shijie-${key}/800/600`;
+  // Use simple, descriptive categories that are easier for learners
+  const simpleCategories = [
+    "cat", "dog", "food", "flower", "tree", "bird", "sunset", 
+    "mountain", "beach", "lake", "coffee", "book", "fruit",
+    "park", "bicycle", "umbrella", "chair", "window", "door",
+    "street", "garden", "breakfast", "lunch", "dinner",
+  ];
+  
+  // Hash the day key to pick a consistent category
+  const hash = key.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const category = simpleCategories[hash % simpleCategories.length];
+  
+  // Unsplash Source API - provides simple, high-quality images
+  // The seed ensures same image for same day
+  return `https://source.unsplash.com/800x600/?${category}&sig=${key}`;
 }
 
 const PatchBody = z.object({

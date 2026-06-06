@@ -15,6 +15,7 @@ type GradeResult = {
   grammar_errors: { wrong: string; correct: string; explanation: string }[];
   hint: string;
   reveal: string | null;
+  vocab_hints?: { hanzi: string; pinyin: string; definition: string }[];
   target_desc?: string;
   target_elements?: string[];
 };
@@ -72,6 +73,7 @@ export const POST = withAuth(async (user, req) => {
     grammar_errors: result.grammar_errors,
     hint: result.hint,
     reveal: result.reveal,
+    vocab_hints: result.vocab_hints || [],
   };
   const newAttempts = [...prevAttempts, newAttempt];
   const solved = result.solved || game.solved;

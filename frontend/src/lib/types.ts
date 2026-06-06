@@ -42,6 +42,7 @@ export type GameAttempt = {
   grammar_errors: { wrong: string; correct: string; explanation: string }[];
   hint: string;
   reveal: string | null;
+  vocab_hints?: { hanzi: string; pinyin: string; definition: string }[];
 };
 
 export type DailyDifficulty = "easy" | "medium" | "hard";
