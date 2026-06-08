@@ -10,6 +10,24 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
  */
 function prepareSvg(raw: string, prefix: string): string {
   let svg = raw.replaceAll("make-me-a-hanzi", `mmah-${prefix}`);
+  // Keep each stroke hidden until its keyframes run. makemeahanzi relies on CSS
+  // backwards-fill (animation-fill-mode: both) to hold the "from" state during a
+  // stroke's delay, but browsers don't reliably backwards-fill SVG presentation
+  // attributes — so a future stroke can flash fully drawn in blue before its turn.
+  // Pinning stroke-dashoffset to the dash length forces a hidden start; the
+  // keyframes still override it (higher cascade priority) while animating.
+  svg = svg.replace(
+    /stroke-dasharray="(\d+(?:\.\d+)?)[\s,]+\d+(?:\.\d+)?"/g,
+    (full, dash) => `stroke-dashoffset="${dash}" ${full}`
+  );
+  // The "to" keyframe only restores stroke color/width, not stroke-dashoffset, so
+  // when a stroke's animation ends its dashoffset falls back to the hidden base
+  // value above and the finished stroke vanishes. Pin dashoffset: 0 in "to" so
+  // each completed stroke stays fully drawn (forwards-fill) until a replay resets.
+  svg = svg.replace(
+    /to\s*\{\s*stroke:\s*black;\s*stroke-width:\s*1024;\s*\}/g,
+    "to { stroke: black; stroke-width: 1024; stroke-dashoffset: 0; }"
+  );
   // Constrain the rendered size while keeping the original viewBox intact.
   svg = svg.replace(
     /<svg([^>]*)>/,
