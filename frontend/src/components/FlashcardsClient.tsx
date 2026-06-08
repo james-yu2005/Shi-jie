@@ -108,7 +108,7 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
     <div className="space-y-6">
       <PageHeader
         title="Flashcards"
-        subtitle="Save words you want to remember and drill yourself, or weave the bucket into an AI paragraph for fresh reading practice."
+        subtitle="Save words you want to remember and test yourself, or generate an AI paragraph for reading practice."
         meta={
           <>
             {cards.length} word{cards.length === 1 ? "" : "s"} in your bucket

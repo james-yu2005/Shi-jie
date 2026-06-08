@@ -10,12 +10,12 @@ const FEATURES = [
   {
     icon: "🃏",
     title: "Flashcard bucket",
-    body: "Save words as you read. Drill yourself with a typing test or weave them into AI-generated paragraphs.",
+    body: "Save words as you read. Test yourself or weave generate them into AI-generated paragraphs.",
   },
   {
     icon: "🌐",
     title: "Personal knowledge graph",
-    body: "Each new word links to your vocabulary by shared radical or shared meaning. Quiz the connections.",
+    body: "Link words by shared radical or shared meaning and get tested on the connections",
   },
   {
     icon: "🖼️",
@@ -28,22 +28,14 @@ export default function SignInPage() {
   return (
     <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-center">
       <section className="space-y-6">
-        <div>
-          <div className="hanzi serif text-6xl font-bold leading-none">
-            世界
-          </div>
-          <div className="mt-1 text-base text-ink/60">
-            Shìjiè — “the world”
-          </div>
-        </div>
-        <h1 className="page-title text-balance text-4xl sm:text-5xl">
-          Read, save, and master Chinese — one word at a time.
+        <h1 className="page-title text-balance text-3xl sm:text-5xl">
+          Read, save, and learn Chinese.
         </h1>
         <p className="lead max-w-xl text-base">
-          A focused study app for the in-between learners: real text on the
-          left, instant dictionary on the right, a flashcard bucket and a
-          personal knowledge graph to make every new word stick.
+          A focused study app for the learners with many features: a smart reader that translates text,
+          a flashcard bucket, a personal knowledge graph, and a daily game.
         </p>
+
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => signIn("google", { callbackUrl: "/" })}
@@ -52,9 +44,6 @@ export default function SignInPage() {
             <GoogleIcon />
             Continue with Google
           </button>
-          <span className="text-xs text-ink/60">
-            We only ask for your name, email, and picture.
-          </span>
         </div>
       </section>
 

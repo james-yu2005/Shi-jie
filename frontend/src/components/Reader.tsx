@@ -210,9 +210,7 @@ export function Reader({ initialText }: { initialText?: string }) {
           {!segmented && (
             <div className="space-y-4">
               <div className="subtle-card text-sm text-ink/70">
-                Paste any Chinese above and press <b>Read</b>. Then click any
-                highlighted word — or drag-select a few characters — to see
-                its definition, pinyin, stroke order, audio, and saving actions.
+                Paste any Chinese above and press <b>Read</b>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {NEXT_STEPS.map((s) => (

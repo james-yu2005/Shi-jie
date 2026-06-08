@@ -62,13 +62,6 @@ export default async function RootLayout({
                 <span className="hanzi serif text-base">世界</span> · a small
                 Chinese reading & study app
               </span>
-              <span className="flex flex-wrap items-center gap-3">
-                <span>Dictionary: CC-CEDICT</span>
-                <span>·</span>
-                <span>Strokes & decomposition: makemeahanzi</span>
-                <span>·</span>
-                <span>AI: OpenAI</span>
-              </span>
             </div>
           </footer>
         </Providers>
