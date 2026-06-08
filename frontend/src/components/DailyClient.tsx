@@ -176,6 +176,7 @@ export function DailyClient() {
             alt="Today's image"
             className="aspect-[4/3] w-full object-cover"
             decoding="async"
+            referrerPolicy="no-referrer"
           />
         </div>
 

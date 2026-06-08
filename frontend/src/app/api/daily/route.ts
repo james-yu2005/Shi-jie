@@ -2,17 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
-import { attemptsNewestFirst, DAILY_MAX_ATTEMPTS } from "@/lib/daily";
+import {
+  attemptsNewestFirst,
+  dayKey,
+  DAILY_MAX_ATTEMPTS,
+  imageForDay,
+  isLegacyDailyImageUrl,
+} from "@/lib/daily";
 import type { GameAttempt } from "@/lib/types";
-
-function dayKey(date = new Date()): string {
-  return date.toISOString().slice(0, 10); // YYYY-MM-DD UTC
-}
-
-function imageForDay(key: string): string {
-  // Seed-based Picsum: always returns an image (no 404 risk), consistent per day.
-  return `https://picsum.photos/seed/shijie-${key}/800/600`;
-}
 
 const PatchBody = z.object({
   difficulty: z.enum(["easy", "medium", "hard"]),
@@ -53,16 +50,30 @@ export const PATCH = withAuth(async (user, req) => {
 
 export const GET = withAuth(async (user) => {
   const key = dayKey();
-  const game = await prisma.dailyGame.upsert({
+  const imageUrl = imageForDay(key);
+
+  let game = await prisma.dailyGame.findUnique({
     where: { userId_dayKey: { userId: user.id, dayKey: key } },
-    create: {
-      userId: user.id,
-      dayKey: key,
-      imageUrl: imageForDay(key),
-      attempts: [],
-    },
-    update: {},
   });
+
+  if (!game) {
+    game = await prisma.dailyGame.create({
+      data: {
+        userId: user.id,
+        dayKey: key,
+        imageUrl,
+        attempts: [],
+      },
+    });
+  } else if (
+    isLegacyDailyImageUrl(game.imageUrl) ||
+    (game.attemptsUsed === 0 && game.imageUrl !== imageUrl)
+  ) {
+    game = await prisma.dailyGame.update({
+      where: { id: game.id },
+      data: { imageUrl },
+    });
+  }
   return NextResponse.json({
     game: {
       id: game.id,
