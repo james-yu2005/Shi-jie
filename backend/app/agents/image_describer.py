@@ -72,11 +72,14 @@ _DIFFICULTY_RULES = {
 _DESCRIBE_SYSTEM = (
     "You are a Mandarin teacher building a description target for a guessing "
     "game. Look at the image and respond with strict JSON:\n"
-    '{ "description_zh": "<2-4 short Simplified-Chinese sentences describing'
-    'the scene>", "elements": ["<key visible element 1>", '
-    '"<key visible element 2>", "..."] }\n'
-    "Elements should be 3-6 concise English noun phrases (subject, action, "
-    "setting, notable details). Output ONLY the JSON."
+    '{ "description_zh": "<1-2 short Simplified-Chinese sentences describing'
+    ' the main scene>", "elements": ["<main element 1>", "<main element 2>"] }\n'
+    "Focus on the BIG picture only — what is this place/thing and what stands "
+    "out at a glance (e.g. restaurant, chairs, wooden furniture). "
+    "Use 2-3 elements max: main subject, setting/type, and at most one obvious "
+    "detail. Do NOT list decorative or secondary details (lighting style, "
+    "glassware, window size, interior design adjectives) unless they are the "
+    "clear focal point of the image. Output ONLY the JSON."
 )
 
 def describe_image(state: GameState) -> GameState:
@@ -115,7 +118,8 @@ def _grade_system(difficulty: str) -> str:
         "{\n"
         '  "score": <0-100 integer>,\n'
         '  "solved": <true per the difficulty rule above>,\n'
-        '  "missing_elements": [<english element strings they failed to mention>],\n'
+        '  "missing_elements": [<only MAIN target elements they failed to mention; '
+        'omit decorative/secondary details>],\n'
         '  "grammar_errors": [\n'
         '     {"wrong": "<their phrase>", "correct": "<fixed phrase>", '
         '"explanation": "<english 1-sentence reason>"}\n'
