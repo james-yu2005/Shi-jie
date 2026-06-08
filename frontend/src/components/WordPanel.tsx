@@ -194,7 +194,7 @@ export function WordPanel({ selection, onClose }: Props) {
                   onClick={onAddToBucket}
                   disabled={added === "saving" || added === "ok"}
                 >
-                  {added === "ok" ? "Added ✓" : added === "saving" ? "Saving…" : "Add to flashcards"}
+                  {added === "ok" ? "Added ✓" : added === "saving" ? "Saving…" : "+ Add to flashcards"}
                 </button>
                 <button
                   className="btn-outline"

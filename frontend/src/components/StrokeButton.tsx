@@ -1,10 +1,22 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
-function replaySvgAnimations(container: HTMLElement) {
-  const svg = container.querySelector("svg");
-  if (!svg) return;
-  svg.replaceWith(svg.cloneNode(true));
+/**
+ * makemeahanzi SVGs animate their strokes via a <style> block whose selectors
+ * reference ids like `#make-me-a-hanzi-animation-0`. To safely render many of
+ * these inline in one document we must rename every id consistently — in the
+ * id attributes, the `url(#...)` refs AND the CSS text. A single string replace
+ * of the shared `make-me-a-hanzi` token covers all three at once.
+ */
+function prepareSvg(raw: string, prefix: string): string {
+  let svg = raw.replaceAll("make-me-a-hanzi", `mmah-${prefix}`);
+  // Constrain the rendered size while keeping the original viewBox intact.
+  svg = svg.replace(
+    /<svg([^>]*)>/,
+    (_m, attrs) =>
+      `<svg${attrs.replace(/\s(width|height)="[^"]*"/g, "")} width="64" height="64">`
+  );
+  return svg;
 }
 
 type Props = {
@@ -14,32 +26,43 @@ type Props = {
 
 export function StrokeButton({ url, char }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef("");
+  const instanceId = useId().replace(/[^a-zA-Z0-9]/g, "");
   const [failed, setFailed] = useState(false);
+
+  const mountSvg = useCallback((svg: string) => {
+    if (!wrapRef.current) return;
+    // Clear and force a reflow so the CSS keyframe animations restart from 0.
+    wrapRef.current.innerHTML = "";
+    void wrapRef.current.offsetHeight;
+    wrapRef.current.innerHTML = svg;
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     setFailed(false);
+    svgRef.current = "";
     fetch(url)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.text();
       })
-      .then((svg) => {
-        if (cancelled || !wrapRef.current) return;
-        wrapRef.current.innerHTML = svg;
-        const svgEl = wrapRef.current.querySelector("svg");
-        if (svgEl) {
-          svgEl.setAttribute("width", "64");
-          svgEl.setAttribute("height", "64");
-        }
+      .then((raw) => {
+        if (cancelled) return;
+        const svg = prepareSvg(raw, instanceId);
+        svgRef.current = svg;
+        mountSvg(svg);
       })
       .catch(() => !cancelled && setFailed(true));
-    return () => { cancelled = true; };
-  }, [url]);
+    return () => {
+      cancelled = true;
+    };
+  }, [url, instanceId, mountSvg]);
 
   const onClick = useCallback(() => {
-    if (wrapRef.current) replaySvgAnimations(wrapRef.current);
-  }, []);
+    if (!svgRef.current) return;
+    mountSvg(svgRef.current);
+  }, [mountSvg]);
 
   if (failed) {
     return (
@@ -57,7 +80,7 @@ export function StrokeButton({ url, char }: Props) {
       aria-label={`Replay stroke order for ${char}`}
       title="Click to replay"
     >
-      <div ref={wrapRef} className="h-16 w-16" />
+      <div ref={wrapRef} className="h-16 w-16 overflow-hidden [&_svg]:block [&_svg]:h-16 [&_svg]:w-16" />
     </button>
   );
 }
