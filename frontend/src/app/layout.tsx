@@ -10,7 +10,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "世界 · Shìjiè — read, save, master Chinese",
   description:
-    "Paste Chinese, look up words, build a flashcard bucket, grow a knowledge graph, and practise daily with an AI-graded image game.",
+    "Paste Chinese, look up words, build a flashcard bucket, grow a knowledge graph, and practise daily with the daily game.",
 };
 
 export default async function RootLayout({

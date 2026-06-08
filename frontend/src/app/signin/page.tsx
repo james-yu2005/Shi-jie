@@ -19,7 +19,7 @@ const FEATURES = [
   },
   {
     icon: "🖼️",
-    title: "Daily image game",
+    title: "Daily Game",
     body: "Describe today's image in Chinese. A vision agent grades you, hints what you missed, and reveals the target.",
   },
 ];

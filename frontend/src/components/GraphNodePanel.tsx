@@ -96,7 +96,7 @@ export function GraphNodePanel({
     return (
       <div className="card text-sm text-ink/60">
         <div className="label mb-2">Node detail</div>
-        Click any node in the graph to see its breakdown, neighbours, and
+        Click any node in the knowledge graph to see its breakdown, neighbours, and
         suggested new connections.
       </div>
     );
@@ -174,66 +174,31 @@ export function GraphNodePanel({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-3 text-sm">
-        <div>
-          <div className="label mb-1">Radicals</div>
-          <div className="flex flex-wrap gap-1">
-            {node.radicals.length === 0 && (
-              <span className="text-ink/50">none detected</span>
-            )}
-            {node.radicals.map((r) => (
-              <span
-                key={r}
-                className="hanzi rounded-md border border-ink/15 bg-paper px-2 py-0.5 text-base"
-              >
-                {r}
-              </span>
-            ))}
-          </div>
+      {neighbors.length === 0 ? (
+        <div className="text-sm text-ink/60">
+          No edges yet. Add more words and they&apos;ll auto-link by radical or
+          meaning.
         </div>
-        <div>
-          <div className="label mb-1">Tags</div>
-          <div className="flex flex-wrap gap-1">
-            {node.semanticTags.length === 0 && (
-              <span className="text-ink/50">none</span>
-            )}
-            {node.semanticTags.map((t) => (
-              <span
-                key={t}
-                className="rounded-full bg-[#2c7da0]/10 px-2 py-0.5 text-xs font-medium text-[#2c7da0]"
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <div className="label mb-1">Connections</div>
-        {neighbors.length === 0 && (
-          <div className="text-sm text-ink/60">
-            No edges yet. Add more words and they&apos;ll auto-link by radical or
-            meaning.
-          </div>
-        )}
-        {charNeighbors.length > 0 && (
-          <NeighborList
-            color="#c0392b"
-            label="Character"
-            items={charNeighbors}
-            onSelect={onSelect}
-          />
-        )}
-        {meaningNeighbors.length > 0 && (
-          <NeighborList
-            color="#2c7da0"
-            label="Meaning"
-            items={meaningNeighbors}
-            onSelect={onSelect}
-          />
-        )}
-      </div>
+      ) : (
+        <>
+          {charNeighbors.length > 0 && (
+            <NeighborList
+              color="#c0392b"
+              label="Character"
+              items={charNeighbors}
+              onSelect={onSelect}
+            />
+          )}
+          {meaningNeighbors.length > 0 && (
+            <NeighborList
+              color="#2c7da0"
+              label="Meaning"
+              items={meaningNeighbors}
+              onSelect={onSelect}
+            />
+          )}
+        </>
+      )}
 
       <div className="flex flex-wrap gap-2 border-t border-ink/10 pt-3">
         {lookup && (

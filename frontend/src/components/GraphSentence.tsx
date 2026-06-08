@@ -62,7 +62,7 @@ export function GraphSentence({ nodes }: Props) {
   if (nodes.length === 0) {
     return (
       <div className="card text-sm text-ink/60">
-        Add at least one node to your graph, then come back to weave them into
+        Add at least one node to your knowledge graph, then come back to weave them into
         a sentence.
       </div>
     );
@@ -120,7 +120,7 @@ export function GraphSentence({ nodes }: Props) {
         </button>
         {paragraph && (
           <button className="btn-accent" onClick={sendToReader}>
-            Open in Reader →
+            Open in Smart Reader →
           </button>
         )}
         {error && <span className="text-sm text-red-600">{error}</span>}

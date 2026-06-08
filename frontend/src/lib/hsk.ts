@@ -1,4 +1,4 @@
-// Top 100 HSK 1–2 words used for the starter deck and HSK badge lookups.
+// Top 100 HSK 1–2 words for HSK badge lookups; the first 50 are the starter deck.
 // Format: [hanzi, pinyin (tone marks), English definition]
 export type HskWord = { hanzi: string; pinyin: string; definition: string; level: 1 | 2 };
 
@@ -107,6 +107,9 @@ export const HSK_100: HskWord[] = [
   { hanzi: "方便", pinyin: "fāng biàn", definition: "convenient", level: 2 },
   { hanzi: "重要", pinyin: "zhòng yào", definition: "important", level: 2 },
 ];
+
+export const AI_SENTENCE_MAX_WORDS = 50;
+export const HSK_STARTER = HSK_100.slice(0, AI_SENTENCE_MAX_WORDS);
 
 const _lookup = new Map(HSK_100.map((w) => [w.hanzi, w]));
 

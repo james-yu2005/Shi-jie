@@ -125,7 +125,7 @@ export function DailyClient() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Daily image"
+        title="Daily Game"
         subtitle={
           <>
             Describe today&apos;s image in Simplified Chinese. You have{" "}

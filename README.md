@@ -2,13 +2,13 @@
 
 An interactive Chinese-learning app. Paste any Chinese text, click words to
 see definitions, pinyin, example sentences, stroke order, and pronunciation.
-Save unknown words into a bucket of flashcards, drill yourself with two game
-modes (typing test + LLM-generated paragraphs), and play a daily image-
-description game graded by a LangGraph agent.
+Save unknown words into a bucket of flashcards, review them with spaced
+repetition or weave them into an AI sentence, and play the daily game
+graded by a LangGraph agent.
 
 ## Features
 
-- **Reader (`/`)** – paste Chinese text, highlight any character or word to
+- **Smart Reader (`/`)** – paste Chinese text, highlight any character or word to
   open a side panel with:
   - English definition
   - Pinyin (with tones)
@@ -18,12 +18,11 @@ description game graded by a LangGraph agent.
   - "Ask AI" button – sends the word/sentence to an LLM for a deeper
     explanation
   - "Add to bucket" – saves the word for later study
-- **Flashcards (`/flashcards`)** – bucket CRUD plus two game modes:
-  1. **Typing test**: each card asks you to type the English definition; the
-     real definition is revealed for self-grading.
-  2. **AI paragraph**: an LLM weaves all bucket words into a short Chinese
-     paragraph that opens in the Reader so you can study it.
-- **Daily Image (`/daily`)** – an image is shown; describe it in Chinese.
+- **Flashcards (`/flashcards`)** – bucket CRUD plus review and AI sentence:
+  1. **Review**: spaced-repetition flashcards for words in your bucket.
+  2. **AI sentence**: an LLM weaves all bucket words into a short Chinese
+     sentence that opens in the Smart Reader so you can study it.
+- **Daily Game (`/daily`)** – an image is shown; describe it in Chinese.
   A LangGraph agent (built on LangChain + OpenAI Vision) checks if you
   captured the key parts and flags grammar mistakes. You get **3 attempts**;
   on the 2nd the agent hints at what you missed; on the 3rd it reveals the
@@ -43,8 +42,8 @@ description game graded by a LangGraph agent.
     you to explain the link; reveal the stored reason or have the AI
     elaborate.
   3. **AI sentence** – select any subset of nodes and have the model weave
-    them into a Chinese paragraph (sends straight to the Reader).
-- **Google sign-in** via NextAuth; everything (bucket, daily progress, graph)
+    them into a Chinese paragraph (sends straight to the Smart Reader).
+- **Google sign-in** via NextAuth; everything (bucket, daily progress, knowledge graph)
   is persisted per user in **Supabase (PostgreSQL)** via Prisma.
 
 ## Stack

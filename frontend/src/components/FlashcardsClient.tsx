@@ -4,13 +4,13 @@ import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import type { Flashcard } from "@/lib/types";
 import { apiJson, swrFetcher } from "@/lib/api";
+import { AI_SENTENCE_MAX_WORDS } from "@/lib/hsk";
 import { BucketEditor } from "./BucketEditor";
 import { ModeTabs } from "./ModeTabs";
 import { PageHeader } from "./PageHeader";
 import { ReviewMode } from "./ReviewMode";
-import { TypingGame } from "./TypingGame";
 
-type Mode = "manage" | "review" | "typing" | "paragraph";
+type Mode = "manage" | "review" | "sentence";
 
 export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }) {
   const router = useRouter();
@@ -80,8 +80,17 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
     }
   }, [mutate]);
 
+  const overSentenceLimit = cards.length > AI_SENTENCE_MAX_WORDS;
+
   const generateParagraph = useCallback(async () => {
     setError(null);
+    if (overSentenceLimit) {
+      const excess = cards.length - AI_SENTENCE_MAX_WORDS;
+      setError(
+        `AI sentence supports up to ${AI_SENTENCE_MAX_WORDS} words. You have ${cards.length} — remove ${excess} from your bucket and try again.`,
+      );
+      return;
+    }
     setGenLoading(true);
     try {
       const j = await apiJson<{ paragraph: string }>("/api/ai/paragraph", {
@@ -90,11 +99,11 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
       });
       setParagraph(j.paragraph);
     } catch (e) {
-      setError(String(e));
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setGenLoading(false);
     }
-  }, [cards]);
+  }, [cards, overSentenceLimit]);
 
   const sendToReader = useCallback(() => {
     if (!paragraph) return;
@@ -108,7 +117,7 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
     <div className="space-y-6">
       <PageHeader
         title="Flashcards"
-        subtitle="Save words you want to remember and test yourself, or generate an AI paragraph for reading practice."
+        subtitle="Save words you want to remember and test yourself, or generate an AI sentence for reading practice."
         meta={
           <>
             {cards.length} word{cards.length === 1 ? "" : "s"} in your bucket
@@ -126,8 +135,7 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
             tabs={[
               { id: "manage", label: "Manage" },
               { id: "review", label: `Review${dueCount > 0 ? ` (${dueCount})` : ""}` },
-              { id: "typing", label: "Typing test", disabled: cards.length === 0 },
-              { id: "paragraph", label: "AI paragraph", disabled: cards.length === 0 },
+              { id: "sentence", label: "AI sentence", disabled: cards.length === 0 },
             ]}
           />
         }
@@ -141,7 +149,7 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
             <div className="subtle-card flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="font-medium text-sm">New here?</div>
-                <p className="text-xs text-ink/60">Load 100 essential HSK 1–2 words to get started instantly.</p>
+                <p className="text-xs text-ink/60">Load 50 essential HSK 1–2 words to get started instantly.</p>
               </div>
               <div className="flex items-center gap-3">
                 <button
@@ -149,7 +157,7 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
                   onClick={loadStarterDeck}
                   disabled={starterLoading}
                 >
-                  {starterLoading ? "Loading…" : "Load starter deck (100 words)"}
+                  {starterLoading ? "Loading…" : "Load starter deck (50 words)"}
                 </button>
                 {starterMsg && (
                   <span className="text-xs text-ink/60">{starterMsg}</span>
@@ -164,21 +172,30 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
         <ReviewMode onDone={() => setMode("manage")} />
       )}
 
-      {mode === "typing" && cards.length > 0 && <TypingGame cards={cards} />}
-
-      {mode === "paragraph" && (
+      {mode === "sentence" && (
         <div className="card space-y-4">
           <p className="text-sm text-ink/70">
-            Generates a short Chinese paragraph using <b>every word</b> in your
-            bucket. Open it in the Reader and study it the same way you study
-            anything else.
+            Generates a short Chinese sentence using <b>every word</b> in your
+            bucket (up to {AI_SENTENCE_MAX_WORDS}). Open it in the Smart Reader and study it
+            the same way you study anything else.
           </p>
+          {overSentenceLimit && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              You have <b>{cards.length}</b> words — the limit is <b>{AI_SENTENCE_MAX_WORDS}</b>.
+              Remove <b>{cards.length - AI_SENTENCE_MAX_WORDS}</b> from your bucket in Manage
+              before generating a sentence.
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
-            <button className="btn-primary" onClick={generateParagraph} disabled={genLoading || cards.length === 0}>
-              {genLoading ? "Generating…" : "Generate paragraph"}
+            <button
+              className="btn-primary"
+              onClick={generateParagraph}
+              disabled={genLoading || cards.length === 0 || overSentenceLimit}
+            >
+              {genLoading ? "Generating…" : "Generate sentence"}
             </button>
             {paragraph && (
-              <button className="btn-accent" onClick={sendToReader}>Open in Reader →</button>
+              <button className="btn-accent" onClick={sendToReader}>Open in Smart Reader →</button>
             )}
           </div>
           {error && <div className="text-sm text-red-600">{error}</div>}

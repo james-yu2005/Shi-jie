@@ -81,7 +81,7 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
     async (id: string) => {
       const node = nodes.find((n) => n.id === id);
       if (!node) return;
-      if (!confirm(`Remove ${node.hanzi} from your graph?`)) return;
+      if (!confirm(`Remove ${node.hanzi} from your knowledge graph?`)) return;
       const r = await fetch(`/api/kg/${id}`, { method: "DELETE" });
       if (!r.ok) return;
       setNodes((curr) => curr.filter((n) => n.id !== id));
@@ -131,7 +131,7 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Knowledge graph"
+        title="Knowledge Graph"
         subtitle="Every word you add becomes a node. Edges form automatically when two nodes share a radical (character) or a semantic tag (meaning)."
         meta={
           <>
@@ -157,7 +157,7 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
                 { id: "explore", label: "Explore" },
                 {
                   id: "quiz",
-                  label: "Connection quiz",
+                  label: "Review",
                   disabled: edges.length === 0,
                 },
                 {
@@ -195,7 +195,7 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
                 onClick={onAddFromInput}
                 disabled={adding || !addHanzi.trim()}
               >
-                {adding ? "Analyzing…" : "Add to graph"}
+                {adding ? "Analyzing…" : "Add to knowledge graph"}
               </button>
 
               <div className="ml-auto flex flex-wrap items-center gap-2">

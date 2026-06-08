@@ -112,7 +112,7 @@ export function GraphQuiz({ nodes, edges }: Props) {
     return (
       <div className="card text-sm text-ink/60">
         You need at least one connected pair of nodes. Add more words and let
-        the graph build edges.
+        the knowledge graph build edges.
       </div>
     );
   }
@@ -124,7 +124,7 @@ export function GraphQuiz({ nodes, edges }: Props) {
   return (
     <div className="card space-y-4">
       <div className="flex items-center justify-between">
-        <div className="label">Connection quiz</div>
+        <div className="label">Review</div>
         <div className="text-xs text-ink/60">
           Score: <b>{score.correct}</b> / {score.total}
         </div>

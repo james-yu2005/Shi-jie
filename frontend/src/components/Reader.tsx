@@ -21,8 +21,8 @@ const SAMPLE = `今天天气真好，我们一起去公园散步吧。
 
 const NEXT_STEPS = [
   { href: "/flashcards", title: "Flashcards", body: "Save words you didn't know and drill yourself." },
-  { href: "/graph", title: "Knowledge graph", body: "Watch your vocabulary cluster by radical and meaning." },
-  { href: "/daily", title: "Daily image", body: "Describe an image in Chinese. AI grades you and hints." },
+  { href: "/graph", title: "Knowledge Graph", body: "Watch your vocabulary cluster by radical and meaning." },
+  { href: "/daily", title: "Daily Game", body: "Describe an image in Chinese. AI grades you and hints." },
 ];
 
 // Tone colours used when toneColors toggle is on.
@@ -109,7 +109,7 @@ export function Reader({ initialText }: { initialText?: string }) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Reader"
+        title="Smart Reader"
         subtitle="Paste any Chinese text."
       />
 

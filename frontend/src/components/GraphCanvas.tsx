@@ -330,8 +330,8 @@ export function GraphCanvas({
         <div className="max-w-md space-y-2">
           <div className="hanzi text-3xl">🌱</div>
           <p>
-            Your graph is empty. Open the <b>Reader</b>, click any word, and
-            press <b>Add to graph</b> — or type a word in the input above to
+            Your knowledge graph is empty. Open the <b>Smart Reader</b>, click any word, and
+            press <b>Add to knowledge graph</b> — or type a word in the input above to
             add it directly.
           </p>
         </div>
@@ -453,8 +453,8 @@ export function GraphCanvas({
         <button
           className="grid h-7 w-7 place-items-center rounded text-xs text-ink/80 hover:bg-ink/5"
           onClick={fitToContent}
-          title="Fit graph"
-          aria-label="Fit graph"
+          title="Fit knowledge graph"
+          aria-label="Fit knowledge graph"
         >
           ⤢
         </button>

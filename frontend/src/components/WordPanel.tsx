@@ -125,7 +125,7 @@ export function WordPanel({ selection, onClose }: Props) {
     return (
       <div className="card text-sm text-ink/60">
         <div className="label mb-2">Word panel</div>
-        Click a word in the reader to see its definition, pinyin, stroke order,
+        Click a word in the smart reader to see its definition, pinyin, stroke order,
         and audio. You can also drag-select multi-character phrases.
       </div>
     );
@@ -227,7 +227,7 @@ export function WordPanel({ selection, onClose }: Props) {
                   disabled={graphed === "saving" || graphed === "ok"}
                   title="Adds to your knowledge graph and links to related words"
                 >
-                  {graphed === "ok" ? "In graph ✓" : graphed === "saving" ? "Linking…" : graphed === "err" ? "Retry graph" : "+ Add to graph"}
+                  {graphed === "ok" ? "In knowledge graph ✓" : graphed === "saving" ? "Linking…" : graphed === "err" ? "Retry" : "+ Add to knowledge graph"}
                 </button>
                 <button
                   className="btn-outline"

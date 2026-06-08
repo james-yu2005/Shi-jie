@@ -56,7 +56,7 @@ export function BucketEditor({ cards, onAdd, onRemove, onUpdate }: Props) {
         <div className="subtle-card text-sm text-ink/70">
           Your bucket is empty. Add a word above, or jump to the{" "}
           <a href="/" className="font-medium text-accent hover:underline">
-            Reader
+            Smart Reader
           </a>
           , click any unfamiliar word, and press <b>Add to bucket</b>.
         </div>
