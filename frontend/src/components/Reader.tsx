@@ -110,7 +110,7 @@ export function Reader({ initialText }: { initialText?: string }) {
     <div className="space-y-6">
       <PageHeader
         title="Reader"
-        subtitle="Paste any Chinese text. Click a word to see its definition, pinyin, stroke order, and audio — or drag-select multi-character phrases."
+        subtitle="Paste any Chinese text."
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_400px]">

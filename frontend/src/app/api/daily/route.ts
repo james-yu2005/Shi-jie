@@ -10,20 +10,8 @@ function dayKey(date = new Date()): string {
 }
 
 function imageForDay(key: string): string {
-  // Use a curated set of simple picsum photo IDs that show clear, simple subjects
-  // Cycling through them ensures variety while keeping images simple and learner-friendly
-  const simplePhotoIds = [
-    237, 292, 169, 180, 225, 177, 164, 168, 181, 203,  // animals, nature
-    312, 326, 365, 431, 441, 511, 551, 593, 659, 718,  // objects, food
-    783, 815, 844, 866, 901, 922, 944, 996, 1015, 1036, // landscapes
-  ];
-  
-  // Hash the day key to pick a consistent photo ID
-  const hash = key.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const photoId = simplePhotoIds[hash % simplePhotoIds.length];
-  
-  // Picsum with specific ID - reliable, simple images
-  return `https://picsum.photos/id/${photoId}/800/600`;
+  // Seed-based Picsum: always returns an image (no 404 risk), consistent per day.
+  return `https://picsum.photos/seed/shijie-${key}/800/600`;
 }
 
 const PatchBody = z.object({

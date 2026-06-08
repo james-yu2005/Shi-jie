@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import type { DictLookup } from "@/lib/types";
 import { apiJson } from "@/lib/api";
-import { hskLookup } from "@/lib/hsk";
+
 
 type Props = {
   selection: { word: string; context: string } | null;
@@ -121,8 +121,6 @@ export function WordPanel({ selection, onClose }: Props) {
     [data],
   );
 
-  const hsk = selection ? hskLookup(selection.word) : null;
-
   if (!selection) {
     return (
       <div className="card text-sm text-ink/60">
@@ -137,21 +135,8 @@ export function WordPanel({ selection, onClose }: Props) {
     <div className="card space-y-4">
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <div className="hanzi text-3xl font-bold leading-tight">
-              {selection.word}
-            </div>
-            {hsk && (
-              <span
-                className="rounded-full px-2 py-0.5 text-xs font-semibold"
-                style={{
-                  background: hsk.level === 1 ? "#dcfce7" : "#dbeafe",
-                  color: hsk.level === 1 ? "#166534" : "#1e40af",
-                }}
-              >
-                HSK {hsk.level}
-              </span>
-            )}
+          <div className="hanzi text-3xl font-bold leading-tight">
+            {selection.word}
           </div>
           {data?.entries[0] && (
             <div className="text-sm text-ink/70">{data.entries[0].pinyin}</div>
