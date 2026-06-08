@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import type { DictLookup } from "@/lib/types";
 import { apiJson } from "@/lib/api";
+import { StrokeButton } from "./StrokeButton";
 
 
 type Props = {
@@ -22,7 +23,6 @@ export function WordPanel({ selection, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<"idle" | "saving" | "ok" | "err">("idle");
   const [graphed, setGraphed] = useState<"idle" | "saving" | "ok" | "err">("idle");
-
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -173,15 +173,13 @@ export function WordPanel({ selection, onClose }: Props) {
               <div className="label mb-1">Stroke order</div>
               <div className="flex flex-wrap gap-3">
                 {data.characters.map((ch) => (
-                  <div key={ch.char} className="flex flex-col items-center rounded-md border border-ink/10 p-2">
-                    {ch.stroke_animated_svg ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={ch.stroke_animated_svg} alt={`stroke order for ${ch.char}`} width={64} height={64} />
-                    ) : (
+                  ch.stroke_animated_svg ? (
+                    <StrokeButton key={ch.char} url={ch.stroke_animated_svg} char={ch.char} />
+                  ) : (
+                    <div key={ch.char} className="flex items-center justify-center rounded-md border border-ink/10 p-2">
                       <div className="hanzi text-2xl">{ch.char}</div>
-                    )}
-                    <span className="hanzi mt-1 text-xs">{ch.char}</span>
-                  </div>
+                    </div>
+                  )
                 ))}
               </div>
             </div>

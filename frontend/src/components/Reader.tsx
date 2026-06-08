@@ -25,21 +25,6 @@ const NEXT_STEPS = [
   { href: "/daily", title: "Daily Game", body: "Describe an image in Chinese. AI grades you and hints." },
 ];
 
-// Tone colours used when toneColors toggle is on.
-const TONE_COLOR: Record<number, string> = {
-  1: "#c0392b",   // red — flat
-  2: "#d97706",   // amber — rising
-  3: "#16a34a",   // green — dip-and-rise
-  4: "#2563eb",   // blue — falling
-  0: "inherit",   // neutral / unknown
-};
-
-/** Extract the dominant (first) tone number from a numbered-pinyin string like "gao1xing4". */
-function dominantTone(pinyinNumbered: string): number {
-  const m = pinyinNumbered.match(/[1-4]/);
-  return m ? parseInt(m[0], 10) : 0;
-}
-
 /** Return the display pinyin from a token's first entry (prefer tone-mark form). */
 function displayPinyin(tok: Token): string {
   const e = tok.entries[0];
@@ -55,7 +40,6 @@ export function Reader({ initialText }: { initialText?: string }) {
   const [error, setError] = useState<string | null>(null);
   // Display toggles
   const [showPinyin, setShowPinyin] = useState(false);
-  const [toneColors, setToneColors] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -154,15 +138,6 @@ export function Reader({ initialText }: { initialText?: string }) {
                   />
                   Show pinyin
                 </label>
-                <label className="flex cursor-pointer items-center gap-1.5">
-                  <input
-                    type="checkbox"
-                    checked={toneColors}
-                    onChange={(e) => setToneColors(e.target.checked)}
-                    className="h-4 w-4 accent-accent"
-                  />
-                  Tone colours
-                </label>
               </div>
 
               <div ref={containerRef} className="card hanzi" onMouseUp={onMouseUp}>
@@ -172,7 +147,6 @@ export function Reader({ initialText }: { initialText?: string }) {
                     return <span key={i}>{tok.token}</span>;
                   }
                   const active = selected?.word === tok.token;
-                  const tone = toneColors ? dominantTone(tok.entries[0]?.pinyin_numbered ?? "") : 0;
                   const py = showPinyin ? displayPinyin(tok) : "";
 
                   if (showPinyin && py) {
@@ -182,7 +156,6 @@ export function Reader({ initialText }: { initialText?: string }) {
                         className="hanzi-token"
                         data-active={active ? "true" : undefined}
                         onClick={() => onTokenClick(tok)}
-                        style={{ color: toneColors ? TONE_COLOR[tone] : undefined }}
                       >
                         {tok.token}
                         <rt className="text-[0.55em] text-ink/60">{py}</rt>
@@ -197,7 +170,6 @@ export function Reader({ initialText }: { initialText?: string }) {
                       data-active={active ? "true" : undefined}
                       onClick={() => onTokenClick(tok)}
                       title={tok.entries[0]?.pinyin || tok.entries[0]?.pinyin_numbered || ""}
-                      style={{ color: toneColors ? TONE_COLOR[tone] : undefined }}
                     >
                       {tok.token}
                     </span>

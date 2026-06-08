@@ -49,18 +49,22 @@ class GameState(TypedDict, total=False):
 # ---------- difficulty level -----
 _DIFFICULTY_RULES = {
     "easy": (
-        "Difficulty: EASY. Be lenient and encouraging. Mark solved if the "
-        "score >= 45 and the learner covered ~35% of the key elements. "
-        "Overlook minor grammar slips."
+        "Difficulty: EASY. Be lenient and encouraging. Accept paraphrases, synonyms, and" 
+        "alternative sentence structures whenever they communicate the same meaning as the"
+        "target answer. Mark solved if the score >= 45 and the learner covered ~35% of" 
+        "the key elements. Overlook minor grammar slips."
     ),
     "medium": (
-        "Difficulty: MEDIUM. Use standard grading. Mark solved if the score "
-        ">= 55 and the learner covered ~45% of the key elements."
+        "Difficulty: MEDIUM. Use standard grading. Accept paraphrases, synonyms, and" 
+        "alternative sentence structures whenever they communicate the same meaning as the"
+        "target answer. Mark solved if the score >= 60 and the learner covered ~45 % of" 
+        "the key elements."
     ),
     "hard": (
-        "Difficulty: HARD. Be strict. Mark solved only if the score >= 70 and "
-        "the learner covered ~60% of the key elements. Demand correct grammar "
-        "and richer vocabulary."
+        "Difficulty: MEDIUM. Use strict grading. Accept paraphrases, synonyms, and" 
+        "alternative sentence structures whenever they communicate the same meaning as the"
+        "target answer. Mark solved if the score >= 75 and the learner covered ~60 % of" 
+        "the key elements."
     ),
 }
 
