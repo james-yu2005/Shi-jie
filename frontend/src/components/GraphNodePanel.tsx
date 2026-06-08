@@ -27,7 +27,6 @@ export function GraphNodePanel({
   const [addingHanzi, setAddingHanzi] = useState<string | null>(null);
   const [lookup, setLookup] = useState<DictLookup | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
-  const audioRef = useState<HTMLAudioElement | null>(null)[0];
 
   useEffect(() => {
     setSuggestions(null);
@@ -76,21 +75,19 @@ export function GraphNodePanel({
   }, [node]);
 
   const playAudio = useCallback(() => {
-    if (!node || !lookup) return;
+    if (!node) return;
     const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=zh-CN&q=${encodeURIComponent(node.hanzi)}`;
-    if (audioRef) {
-      const audio = new Audio(audioUrl);
-      audio.play().catch(() => {
-        if ("speechSynthesis" in window) {
-          const u = new SpeechSynthesisUtterance(node.hanzi);
-          u.lang = "zh-CN";
-          u.rate = 0.85;
-          window.speechSynthesis.cancel();
-          window.speechSynthesis.speak(u);
-        }
-      });
-    }
-  }, [node, lookup, audioRef]);
+    const audio = new Audio(audioUrl);
+    audio.play().catch(() => {
+      if ("speechSynthesis" in window) {
+        const u = new SpeechSynthesisUtterance(node.hanzi);
+        u.lang = "zh-CN";
+        u.rate = 0.85;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      }
+    });
+  }, [node]);
 
   if (!node) {
     return (
@@ -118,8 +115,17 @@ export function GraphNodePanel({
     <div className="card space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="hanzi text-3xl font-bold leading-tight">
-            {node.hanzi}
+          <div className="flex items-center gap-2">
+            <div className="hanzi text-3xl font-bold leading-tight">
+              {node.hanzi}
+            </div>
+            <button
+              className="btn-outline shrink-0 px-2 py-1 text-sm"
+              onClick={playAudio}
+              aria-label="Play pronunciation"
+            >
+              🔊
+            </button>
           </div>
           {!lookup?.entries?.length && node.pinyin && (
             <div className="text-sm text-ink/70">{node.pinyin}</div>
@@ -201,11 +207,6 @@ export function GraphNodePanel({
       )}
 
       <div className="flex flex-wrap gap-2 border-t border-ink/10 pt-3">
-        {lookup && (
-          <button className="btn-outline" onClick={playAudio}>
-            🔊 Play
-          </button>
-        )}
         <button
           className="btn-outline"
           onClick={fetchSuggestions}

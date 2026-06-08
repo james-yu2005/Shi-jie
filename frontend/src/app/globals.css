@@ -83,7 +83,7 @@ body {
 }
 
 .btn-outline {
-  @apply btn border border-ink/15 bg-white hover:border-ink/30 hover:bg-ink/5 active:scale-[0.98] disabled:opacity-40 disabled:hover:bg-white;
+  @apply btn border border-ink/15 bg-white hover:border-ink/30 hover:bg-ink/5 active:scale-[0.94] disabled:opacity-40 disabled:hover:bg-white;
 }
 
 .btn-accent {

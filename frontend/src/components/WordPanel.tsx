@@ -133,13 +133,19 @@ export function WordPanel({ selection, onClose }: Props) {
 
   return (
     <div className="card space-y-4">
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
           <div className="hanzi text-3xl font-bold leading-tight">
             {selection.word}
           </div>
-          {data?.entries[0] && (
-            <div className="text-sm text-ink/70">{data.entries[0].pinyin}</div>
+          {data && (
+            <button
+              className="btn-outline shrink-0 px-2 py-1 text-sm"
+              onClick={playAudio}
+              aria-label="Play pronunciation"
+            >
+              🔊
+            </button>
           )}
         </div>
         <button onClick={onClose} className="text-ink/40 hover:text-ink" aria-label="Close">
@@ -208,10 +214,6 @@ export function WordPanel({ selection, onClose }: Props) {
 
           {/* Action buttons */}
           <div className="flex flex-wrap gap-2">
-            <button className="btn-outline" onClick={playAudio}>
-              🔊 Play
-            </button>
-
             {signedIn ? (
               <>
                 <button
