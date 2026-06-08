@@ -10,21 +10,20 @@ function dayKey(date = new Date()): string {
 }
 
 function imageForDay(key: string): string {
-  // Use simple, descriptive categories that are easier for learners
-  const simpleCategories = [
-    "cat", "dog", "food", "flower", "tree", "bird", "sunset", 
-    "mountain", "beach", "lake", "coffee", "book", "fruit",
-    "park", "bicycle", "umbrella", "chair", "window", "door",
-    "street", "garden", "breakfast", "lunch", "dinner",
+  // Use a curated set of simple picsum photo IDs that show clear, simple subjects
+  // Cycling through them ensures variety while keeping images simple and learner-friendly
+  const simplePhotoIds = [
+    237, 292, 169, 180, 225, 177, 164, 168, 181, 203,  // animals, nature
+    312, 326, 365, 431, 441, 511, 551, 593, 659, 718,  // objects, food
+    783, 815, 844, 866, 901, 922, 944, 996, 1015, 1036, // landscapes
   ];
   
-  // Hash the day key to pick a consistent category
+  // Hash the day key to pick a consistent photo ID
   const hash = key.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const category = simpleCategories[hash % simpleCategories.length];
+  const photoId = simplePhotoIds[hash % simplePhotoIds.length];
   
-  // Unsplash Source API - provides simple, high-quality images
-  // The seed ensures same image for same day
-  return `https://source.unsplash.com/800x600/?${category}&sig=${key}`;
+  // Picsum with specific ID - reliable, simple images
+  return `https://picsum.photos/id/${photoId}/800/600`;
 }
 
 const PatchBody = z.object({

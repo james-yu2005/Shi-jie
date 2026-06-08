@@ -27,6 +27,7 @@ export function GraphNodePanel({
   const [addingHanzi, setAddingHanzi] = useState<string | null>(null);
   const [lookup, setLookup] = useState<DictLookup | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
+  const audioRef = useState<HTMLAudioElement | null>(null)[0];
 
   useEffect(() => {
     setSuggestions(null);
@@ -73,6 +74,23 @@ export function GraphNodePanel({
       setSuggestLoading(false);
     }
   }, [node]);
+
+  const playAudio = useCallback(() => {
+    if (!node || !lookup) return;
+    const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=zh-CN&q=${encodeURIComponent(node.hanzi)}`;
+    if (audioRef) {
+      const audio = new Audio(audioUrl);
+      audio.play().catch(() => {
+        if ("speechSynthesis" in window) {
+          const u = new SpeechSynthesisUtterance(node.hanzi);
+          u.lang = "zh-CN";
+          u.rate = 0.85;
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(u);
+        }
+      });
+    }
+  }, [node, lookup, audioRef]);
 
   if (!node) {
     return (
@@ -123,11 +141,11 @@ export function GraphNodePanel({
         )}
         {!lookupLoading && lookup && lookup.entries.length > 0 ? (
           <ul className="space-y-2">
-            {lookup.entries.map((e, i) => (
+            {lookup.entries.slice(0, 1).map((e, i) => (
               <li key={i} className="text-sm">
                 <div className="text-ink/70">{e.pinyin}</div>
                 <ol className="mt-1 list-decimal pl-5">
-                  {e.definitions.map((d, j) => (
+                  {e.definitions.slice(0, 3).map((d, j) => (
                     <li key={j}>{d}</li>
                   ))}
                 </ol>
@@ -218,6 +236,11 @@ export function GraphNodePanel({
       </div>
 
       <div className="flex flex-wrap gap-2 border-t border-ink/10 pt-3">
+        {lookup && (
+          <button className="btn-outline" onClick={playAudio}>
+            🔊 Play
+          </button>
+        )}
         <button
           className="btn-outline"
           onClick={fetchSuggestions}

@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { href: "/", label: "Reader" },
   { href: "/flashcards", label: "Flashcards" },
-  { href: "/daily", label: "Daily" },
-  { href: "/graph", label: "Graph" },
+  { href: "/graph", label: "Word Graph" },
+  { href: "/daily", label: "Daily Game" },
 ];
 
 export function HeaderNav() {
