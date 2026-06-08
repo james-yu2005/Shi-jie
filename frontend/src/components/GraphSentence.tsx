@@ -95,13 +95,13 @@ export function GraphSentence({ nodes }: Props) {
               className={
                 "rounded-full border px-3 py-1 text-sm transition " +
                 (on
-                  ? "border-ink bg-ink text-white"
+                  ? "border-ink/20 bg-ink/10 text-ink"
                   : "border-ink/15 bg-white hover:bg-ink/5")
               }
             >
               <span className="hanzi text-base">{n.hanzi}</span>
               {n.pinyin && (
-                <span className={"ml-1 text-xs " + (on ? "text-white/80" : "text-ink/60")}>
+                <span className="ml-1 text-xs text-ink/60">
                   {n.pinyin}
                 </span>
               )}
@@ -119,7 +119,7 @@ export function GraphSentence({ nodes }: Props) {
           {loading ? "Generating…" : "Weave into paragraph"}
         </button>
         {paragraph && (
-          <button className="btn-accent" onClick={sendToReader}>
+          <button className="btn-outline" onClick={sendToReader}>
             Open in Smart Reader →
           </button>
         )}

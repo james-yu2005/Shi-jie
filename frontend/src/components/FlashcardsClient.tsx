@@ -195,7 +195,7 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
               {genLoading ? "Generating…" : "Generate sentence"}
             </button>
             {paragraph && (
-              <button className="btn-accent" onClick={sendToReader}>Open in Smart Reader →</button>
+              <button className="btn-outline" onClick={sendToReader}>Open in Smart Reader →</button>
             )}
           </div>
           {error && <div className="text-sm text-red-600">{error}</div>}

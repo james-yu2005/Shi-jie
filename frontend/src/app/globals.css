@@ -86,14 +86,6 @@ body {
   @apply btn border border-ink/15 bg-white hover:border-ink/30 hover:bg-ink/5 active:scale-[0.94] disabled:opacity-40 disabled:hover:bg-white;
 }
 
-.btn-accent {
-  @apply btn text-white active:scale-[0.98] disabled:opacity-40;
-  background: var(--accent);
-}
-.btn-accent:hover {
-  background: #a93226;
-}
-
 .btn-ghost {
   @apply btn text-ink/70 hover:bg-ink/5 hover:text-ink;
 }

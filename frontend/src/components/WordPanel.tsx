@@ -22,8 +22,6 @@ export function WordPanel({ selection, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<"idle" | "saving" | "ok" | "err">("idle");
   const [graphed, setGraphed] = useState<"idle" | "saving" | "ok" | "err">("idle");
-  const [explain, setExplain] = useState<string | null>(null);
-  const [explaining, setExplaining] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -32,7 +30,6 @@ export function WordPanel({ selection, onClose }: Props) {
     setAdded("idle");
     setGraphed("idle");
     setError(null);
-    setExplain(null);
     if (!selection) return;
     const word = selection.word;
     const cached = lookupCache.get(word);
@@ -99,20 +96,6 @@ export function WordPanel({ selection, onClose }: Props) {
       setGraphed("ok");
     } catch { setGraphed("err"); }
   }, [data, selection]);
-
-  const onExplain = useCallback(async () => {
-    if (!selection || !signedIn) return;
-    setExplaining(true);
-    setExplain(null);
-    try {
-      const j = await apiJson<{ explanation: string }>("/api/ai/explain", {
-        method: "POST",
-        json: { word: selection.word, context: selection.context || null },
-      });
-      setExplain(j.explanation);
-    } catch (e) { setExplain(`Error: ${String(e)}`); }
-    finally { setExplaining(false); }
-  }, [selection, signedIn]);
 
   const examples = useMemo(() =>
     data?.entries.flatMap((e) =>
@@ -204,24 +187,16 @@ export function WordPanel({ selection, onClose }: Props) {
             </div>
           )}
 
-          {/* AI explain section */}
-          {explain && (
-            <div className="rounded-md border border-ink/10 bg-paper p-3 text-sm">
-              <div className="label mb-1">AI explanation</div>
-              <p className="whitespace-pre-wrap text-ink/80">{explain}</p>
-            </div>
-          )}
-
           {/* Action buttons */}
           <div className="flex flex-wrap gap-2">
             {signedIn ? (
               <>
                 <button
-                  className="btn-accent"
+                  className="btn-outline"
                   onClick={onAddToBucket}
                   disabled={added === "saving" || added === "ok"}
                 >
-                  {added === "ok" ? "Added ✓" : added === "saving" ? "Saving…" : "Add to bucket"}
+                  {added === "ok" ? "Added ✓" : added === "saving" ? "Saving…" : "Add to flashcards"}
                 </button>
                 <button
                   className="btn-outline"
@@ -231,20 +206,13 @@ export function WordPanel({ selection, onClose }: Props) {
                 >
                   {graphed === "ok" ? "In knowledge graph ✓" : graphed === "saving" ? "Linking…" : graphed === "err" ? "Retry" : "+ Add to knowledge graph"}
                 </button>
-                <button
-                  className="btn-outline"
-                  onClick={onExplain}
-                  disabled={explaining}
-                >
-                  {explaining ? "Explaining…" : "✨ Explain"}
-                </button>
               </>
             ) : (
               <button
                 className="btn-outline text-accent"
                 onClick={() => signIn()}
               >
-                Sign in to save &amp; explain →
+                Sign in to save →
               </button>
             )}
           </div>

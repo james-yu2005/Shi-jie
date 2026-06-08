@@ -58,7 +58,7 @@ export function BucketEditor({ cards, onAdd, onRemove, onUpdate }: Props) {
           <a href="/" className="font-medium text-accent hover:underline">
             Smart Reader
           </a>
-          , click any unfamiliar word, and press <b>Add to bucket</b>.
+          , click any unfamiliar word, and press <b>Add to flashcards</b>.
         </div>
       ) : (
         <div className="card divide-y divide-ink/10 p-0">
