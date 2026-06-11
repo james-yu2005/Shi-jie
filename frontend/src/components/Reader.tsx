@@ -16,7 +16,7 @@ type Segmented = { tokens: Token[] };
 
 const HAN = /[\u3400-\u9fff\uf900-\ufaff]/;
 
-const SAMPLE = `今天天气真好，我们一起去公园散步吧。
+const SAMPLE = `今天天气真好，所以老师带学生去公园看花。
 我最近在学习中文，每天都会读一些短文，遇到不认识的字就查一下。
 学习语言是一件需要耐心的事，但是非常有意思。`;
 
