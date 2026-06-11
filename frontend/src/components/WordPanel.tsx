@@ -1,29 +1,37 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import type { DictLookup } from "@/lib/types";
 import { apiJson } from "@/lib/api";
+import { useLearningPreferences } from "@/contexts/LearningPreferencesContext";
+import { pickEntryForm } from "@/lib/script";
+import { strokeAnimatedUrl } from "@/lib/strokes";
+import { jyutpingFromEntry, pinyinFromEntry } from "@/lib/word-display";
 import { StrokeButton } from "./StrokeButton";
-
+import { WordHead } from "./WordHead";
 
 type Props = {
   selection: { word: string; context: string } | null;
   onClose: () => void;
 };
 
-// Dictionary lookups are deterministic per word — cache them for the session.
 const lookupCache = new Map<string, DictLookup>();
+
+function cacheKey(word: string, audio: string) {
+  return `${word}:${audio}`;
+}
 
 export function WordPanel({ selection, onClose }: Props) {
   const { status } = useSession();
   const signedIn = status === "authenticated";
+  const { preferences, displayHanzi } = useLearningPreferences();
 
   const [data, setData] = useState<DictLookup | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<"idle" | "saving" | "ok" | "err">("idle");
   const [graphed, setGraphed] = useState<"idle" | "saving" | "ok" | "err">("idle");
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     setData(null);
@@ -32,70 +40,59 @@ export function WordPanel({ selection, onClose }: Props) {
     setError(null);
     if (!selection) return;
     const word = selection.word;
-    const cached = lookupCache.get(word);
+    const key = cacheKey(word, preferences.audio);
+    const cached = lookupCache.get(key);
     if (cached) { setData(cached); return; }
     let cancelled = false;
     setLoading(true);
     const timer = setTimeout(() => {
-      apiJson<DictLookup>(`/api/dictionary/lookup?word=${encodeURIComponent(word)}`)
-        .then((d) => { lookupCache.set(word, d); if (!cancelled) setData(d); })
+      apiJson<DictLookup>(
+        `/api/dictionary/lookup?word=${encodeURIComponent(word)}&audio=${preferences.audio}`,
+      )
+        .then((d) => { lookupCache.set(key, d); if (!cancelled) setData(d); })
         .catch((e) => !cancelled && setError(String(e)))
         .finally(() => !cancelled && setLoading(false));
     }, 200);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [selection]);
+  }, [selection, preferences.audio]);
 
-  const playAudio = useCallback(() => {
-    if (!data) return;
-    // Prefer Google TTS for reliable Chinese pronunciation; browser TTS is a
-    // silent fallback for environments that block the external request.
-    if (audioRef.current) {
-      audioRef.current.src = data.audio_url;
-      audioRef.current.play().catch(() => {
-        if ("speechSynthesis" in window) {
-          const u = new SpeechSynthesisUtterance(data.word);
-          u.lang = "zh-CN";
-          u.rate = 0.85;
-          window.speechSynthesis.cancel();
-          window.speechSynthesis.speak(u);
-        }
-      });
-    }
-  }, [data]);
+  const primaryEntry = data?.entries[0];
 
   const onAddToBucket = useCallback(async () => {
-    if (!data || !selection) return;
+    if (!data || !selection || !primaryEntry) return;
     setAdded("saving");
     try {
       await apiJson("/api/bucket", {
         method: "POST",
         json: {
-          hanzi: data.word,
-          pinyin: data.entries[0]?.pinyin ?? "",
-          definition: (data.entries[0]?.definitions ?? []).join("; "),
+          hanzi: pickEntryForm(primaryEntry, preferences.script),
+          pinyin: pinyinFromEntry(primaryEntry),
+          jyutping: jyutpingFromEntry(primaryEntry),
+          definition: (primaryEntry.definitions ?? []).join("; "),
           notes: selection.context || null,
         },
       });
       setAdded("ok");
     } catch { setAdded("err"); }
-  }, [data, selection]);
+  }, [data, selection, primaryEntry, preferences.script]);
 
   const onAddToGraph = useCallback(async () => {
-    if (!selection) return;
+    if (!selection || !primaryEntry) return;
     setGraphed("saving");
     try {
       await apiJson("/api/kg", {
         method: "POST",
         json: {
-          hanzi: selection.word,
-          pinyin: data?.entries[0]?.pinyin ?? "",
-          definition: (data?.entries[0]?.definitions ?? []).join("; "),
+          hanzi: pickEntryForm(primaryEntry, preferences.script),
+          pinyin: pinyinFromEntry(primaryEntry),
+          jyutping: jyutpingFromEntry(primaryEntry),
+          definition: (primaryEntry.definitions ?? []).join("; "),
           notes: selection.context || null,
         },
       });
       setGraphed("ok");
     } catch { setGraphed("err"); }
-  }, [data, selection]);
+  }, [selection, primaryEntry, preferences.script]);
 
   const examples = useMemo(() =>
     data?.entries.flatMap((e) =>
@@ -108,7 +105,7 @@ export function WordPanel({ selection, onClose }: Props) {
     return (
       <div className="card text-sm text-ink/60">
         <div className="label mb-2">Word panel</div>
-        Click a word in the smart reader to see its definition, pinyin, stroke order,
+        Click a word in the smart reader to see its definition, romanization, stroke order,
         and audio. You can also drag-select multi-character phrases.
       </div>
     );
@@ -117,20 +114,11 @@ export function WordPanel({ selection, onClose }: Props) {
   return (
     <div className="card space-y-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="hanzi text-3xl font-bold leading-tight">
-            {selection.word}
-          </div>
-          {data && (
-            <button
-              className="btn-outline shrink-0 px-2 py-1 text-sm"
-              onClick={playAudio}
-              aria-label="Play pronunciation"
-            >
-              🔊
-            </button>
-          )}
-        </div>
+        <WordHead
+          hanzi={selection.word}
+          entry={primaryEntry}
+          showAudio={Boolean(data)}
+        />
         <button onClick={onClose} className="text-ink/40 hover:text-ink" aria-label="Close">
           ✕
         </button>
@@ -149,8 +137,7 @@ export function WordPanel({ selection, onClose }: Props) {
               <ul className="space-y-2">
                 {data.entries.map((e, i) => (
                   <li key={i} className="text-sm">
-                    <div className="text-ink/70">{e.pinyin}</div>
-                    <ol className="mt-1 list-decimal pl-5">
+                    <ol className="list-decimal pl-5">
                       {e.definitions.map((d, j) => <li key={j}>{d}</li>)}
                     </ol>
                   </li>
@@ -172,20 +159,25 @@ export function WordPanel({ selection, onClose }: Props) {
             <div>
               <div className="label mb-1">Stroke order</div>
               <div className="flex flex-wrap gap-3">
-                {data.characters.map((ch) => (
-                  ch.stroke_animated_svg ? (
-                    <StrokeButton key={ch.char} url={ch.stroke_animated_svg} char={ch.char} />
+                {data.characters.map((ch) => {
+                  const strokeChar = displayHanzi(ch.char);
+                  const strokeUrl = strokeAnimatedUrl(strokeChar);
+                  return strokeUrl ? (
+                    <StrokeButton
+                      key={`${preferences.script}-${strokeChar}-${strokeUrl}`}
+                      url={strokeUrl}
+                      char={strokeChar}
+                    />
                   ) : (
                     <div key={ch.char} className="flex items-center justify-center rounded-md border border-ink/10 p-2">
-                      <div className="hanzi text-2xl">{ch.char}</div>
+                      <div className="hanzi text-2xl">{strokeChar}</div>
                     </div>
-                  )
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* Action buttons */}
           <div className="flex flex-wrap gap-2">
             {signedIn ? (
               <>
@@ -214,8 +206,6 @@ export function WordPanel({ selection, onClose }: Props) {
               </button>
             )}
           </div>
-
-          <audio ref={audioRef} className="hidden" />
         </>
       )}
     </div>

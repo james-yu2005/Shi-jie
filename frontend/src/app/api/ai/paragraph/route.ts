@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateParagraph } from "@/lib/backend";
 import { withAuth } from "@/lib/auth";
+import { getUserPreferences } from "@/lib/preferences";
 import { AI_SENTENCE_MAX_WORDS } from "@/lib/hsk";
 
 const Body = z.object({ words: z.array(z.string().min(1)).min(1) });
 
-export const POST = withAuth(async (_user, req) => {
+export const POST = withAuth(async (user, req) => {
   const parsed = Body.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json({ error: "Add at least one word to your bucket." }, { status: 400 });
@@ -20,8 +21,9 @@ export const POST = withAuth(async (_user, req) => {
       { status: 400 },
     );
   }
+  const prefs = await getUserPreferences(user.id);
   try {
-    return NextResponse.json(await generateParagraph(parsed.data.words));
+    return NextResponse.json(await generateParagraph(parsed.data.words, prefs));
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 502 });
   }

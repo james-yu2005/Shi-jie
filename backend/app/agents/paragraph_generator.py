@@ -11,19 +11,29 @@ from typing import Iterable
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from ..llm import text_llm
+from ..locale import romanization_note, script_label, tutor_role
 
-_SYSTEM = (
-    "You are a Mandarin teacher. Given a list of Chinese words, write ONE "
-    "coherent paragraph (3-6 sentences, ~80-150 Chinese characters) in "
-    "Simplified Chinese that uses every word at least once naturally. "
-    "Do not list the words. Do not include pinyin or English. Do not add "
-    "headings. Output only the paragraph."
-)
+def _system(script: str, locale: str) -> str:
+    script_name = script_label(script)
+    return (
+        f"You are a {tutor_role(locale)}. Given a list of Chinese words, write ONE "
+        f"coherent paragraph (3-6 sentences, ~80-150 Chinese characters) in "
+        f"{script_name} that uses every word at least once naturally. "
+        "Do not list the words. Do not include romanization or English. Do not add "
+        "headings. Output only the paragraph."
+    )
 
 
-def generate(words: list[str]) -> str:
+def generate(
+    words: list[str],
+    script: str = "simplified",
+    locale: str = "mandarin",
+) -> str:
     if not words:
         return ""
     user = "Words: " + ", ".join(words)
-    msgs: Iterable = [SystemMessage(content=_SYSTEM), HumanMessage(content=user)]
+    msgs: Iterable = [
+        SystemMessage(content=_system(script, locale)),
+        HumanMessage(content=user),
+    ]
     return text_llm(0.7).invoke(msgs).content  # type: ignore[return-value]

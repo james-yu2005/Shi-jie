@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { backendFetch } from "@/lib/backend";
 import { withAuth } from "@/lib/auth";
+import { backendLearningPrefs, getUserPreferences } from "@/lib/preferences";
 import { prisma } from "@/lib/prisma";
 import type { KgSuggestion } from "@/lib/types";
 
@@ -49,6 +50,7 @@ export const POST = withAuth(async (user, req) => {
   );
 
   try {
+    const prefs = await getUserPreferences(user.id);
     const data = await backendFetch<{ suggestions: KgSuggestion[] }>(
       "/kg/suggest",
       {
@@ -58,6 +60,7 @@ export const POST = withAuth(async (user, req) => {
           existing: existing.map((e) => e.hanzi),
           existing_tags: existingTags,
           existing_radicals: existingRadicals,
+          ...backendLearningPrefs(prefs),
         },
       },
     );

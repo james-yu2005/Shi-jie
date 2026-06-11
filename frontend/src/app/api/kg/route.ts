@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 const PostBody = z.object({
   hanzi: z.string().min(1).max(32),
   pinyin: z.string().optional(),
+  jyutping: z.string().optional(),
   definition: z.string().optional(),
   notes: z.string().optional().nullable(),
 });
@@ -40,7 +41,7 @@ export const POST = withAuth(async (user, req) => {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
-  const { hanzi, pinyin, definition, notes } = parsed.data;
+  const { hanzi, pinyin, jyutping, definition, notes } = parsed.data;
 
   // If the node already exists, return it (idempotent add-to-graph).
   const existing = await prisma.kgNode.findUnique({
@@ -106,6 +107,7 @@ export const POST = withAuth(async (user, req) => {
       userId: user.id,
       hanzi,
       pinyin: analyzed.pinyin,
+      jyutping: jyutping ?? "",
       definition: analyzed.definition,
       radicals: analyzed.radicals,
       components: analyzed.components,

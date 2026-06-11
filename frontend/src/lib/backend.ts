@@ -1,4 +1,7 @@
 // Thin server-side helper for talking to the Python backend.
+import type { UserPreferences } from "./types";
+import { backendLearningPrefs } from "./preferences";
+
 const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
 const SHARED_SECRET = process.env.BACKEND_SHARED_SECRET;
 
@@ -31,9 +34,12 @@ export async function backendFetch<T>(
 export const BACKEND_URL = BACKEND;
 
 /** Generate one Chinese paragraph from a word list (shared by paragraph + KG-sentence routes). */
-export function generateParagraph(words: string[]): Promise<{ paragraph: string }> {
+export function generateParagraph(
+  words: string[],
+  prefs: UserPreferences,
+): Promise<{ paragraph: string }> {
   return backendFetch<{ paragraph: string }>("/ai/paragraph", {
     method: "POST",
-    json: { words },
+    json: { words, ...backendLearningPrefs(prefs) },
   });
 }

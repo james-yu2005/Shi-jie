@@ -5,6 +5,8 @@ import type { DailyGame, DailyDifficulty, GameAttempt, DailyStats } from "@/lib/
 import { apiJson, swrFetcher } from "@/lib/api";
 import { HeatmapCalendar } from "./HeatmapCalendar";
 import { PageHeader } from "./PageHeader";
+import { RomanizationLines } from "./WordHead";
+import { useLearningPreferences } from "@/contexts/LearningPreferencesContext";
 
 type GameWithMax = DailyGame & { maxAttempts: number };
 
@@ -21,6 +23,9 @@ function scoreBadgeClass(attempt: GameAttempt): string {
 }
 
 export function DailyClient() {
+  const { preferences } = useLearningPreferences();
+  const scriptLabel =
+    preferences.script === "traditional" ? "Traditional Chinese" : "Simplified Chinese";
   const {
     data,
     error: loadError,
@@ -128,7 +133,7 @@ export function DailyClient() {
         title="Daily Game"
         subtitle={
           <>
-            Describe today&apos;s image in Simplified Chinese. You have{" "}
+            Describe today&apos;s image in {scriptLabel}. You have{" "}
             <b>{game.maxAttempts}</b> attempts. On attempt 2 the agent hints at
             what you missed; on attempt {game.maxAttempts} it reveals the full
             target.
@@ -303,11 +308,14 @@ const AttemptCard = memo(function AttemptCard({
           <div className="space-y-2">
             {attempt.vocab_hints.map((vocab, i) => (
               <div key={i} className="rounded bg-white p-2 shadow-sm">
-                <div className="flex items-baseline gap-2">
-                  <span className="hanzi text-lg font-semibold">{vocab.hanzi}</span>
-                  <span className="text-sm text-ink/60">{vocab.pinyin}</span>
-                </div>
-                <div className="mt-0.5 text-sm text-ink/80">{vocab.definition}</div>
+                <div className="hanzi text-lg font-semibold">{vocab.hanzi}</div>
+                <RomanizationLines
+                  pinyin={vocab.pinyin}
+                  jyutping={vocab.jyutping ?? ""}
+                  compact
+                  className="mt-1"
+                />
+                <div className="mt-1 text-sm text-ink/80">{vocab.definition}</div>
               </div>
             ))}
           </div>

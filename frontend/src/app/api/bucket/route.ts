@@ -6,6 +6,7 @@ import { withAuth } from "@/lib/auth";
 const PostBody = z.object({
   hanzi: z.string().min(1),
   pinyin: z.string().default(""),
+  jyutping: z.string().default(""),
   definition: z.string().default(""),
   notes: z.string().optional().nullable(),
 });
@@ -29,6 +30,7 @@ export const POST = withAuth(async (user, req) => {
     create: { ...data, userId: user.id },
     update: {
       pinyin: data.pinyin,
+      jyutping: data.jyutping,
       definition: data.definition,
       notes: data.notes ?? null,
     },

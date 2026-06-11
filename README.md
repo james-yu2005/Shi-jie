@@ -45,6 +45,10 @@ graded by a LangGraph agent.
     them into a Chinese paragraph (sends straight to the Smart Reader).
 - **Google sign-in** via NextAuth; everything (bucket, daily progress, knowledge graph)
   is persisted per user in **Supabase (PostgreSQL)** via Prisma.
+- **Learning preferences** (header toggles) – choose **Simplified / Traditional**
+  script and **Mandarin / Cantonese** audio. Signed-in users' choices sync to
+  the database; guests use localStorage. AI-generated content (daily game, AI
+  paragraphs, graph suggestions) respects your script and locale settings.
 
 ## Stack
 
@@ -53,7 +57,7 @@ graded by a LangGraph agent.
 | Frontend | Next.js 14 (App Router) · TypeScript · Tailwind CSS     |
 | Auth/DB  | NextAuth (Google) · Prisma · Supabase (PostgreSQL)      |
 | Backend  | FastAPI · LangChain · LangGraph · OpenAI                |
-| Dict     | CC-CEDICT (downloaded on first run)                     |
+| Dict     | CC-CEDICT + CC-CANTO Jyutping readings (downloaded on first run) |
 | Strokes  | [makemeahanzi] SVG animations (served via jsDelivr CDN) |
 
 [makemeahanzi]: https://github.com/skishore/makemeahanzi
@@ -78,13 +82,14 @@ python -m venv .venv
 .venv\Scripts\activate          # Windows
 # source .venv/bin/activate     # macOS/Linux
 pip install -r requirements.txt
-python -m app.data.download_cedict   # one-time dictionary download
+python -m app.data.download_cedict   # one-time CC-CEDICT download
+python -m app.data.download_canto    # one-time Cantonese/Jyutping readings
 uvicorn app.main:app --reload --port 8000
 
 # 4. Frontend (in a new terminal)
 cd frontend
 npm install
-npx prisma migrate dev --name init   # pushes schema to Supabase
+npx prisma migrate dev --name add_learning_preferences
 npm run dev
 ```
 
@@ -129,3 +134,9 @@ shi-jie-new/
 - The database is **Supabase (PostgreSQL)**. Use the **Session-mode pooler** URL
   (port 5432) as `DATABASE_URL` at runtime and the **direct** connection URL as
   `DIRECT_URL` for `prisma migrate`. Both are in Supabase → Project Settings → Database.
+- **Traditional / Cantonese mode:** use the **Script** and **Audio** toggles in the
+  header. Cantonese audio uses Google Translate TTS (`zh-HK`) with browser
+  `speechSynthesis` fallback; quality varies by network and browser.
+- **Jyutping** comes from [CC-CANTO](https://cccanto.org/) Cantonese readings merged
+  into dictionary lookups. When no Cantonese reading exists for a word, the UI falls
+  back to Mandarin pinyin.

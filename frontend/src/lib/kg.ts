@@ -6,6 +6,7 @@ export function nodeToClient(n: {
   id: string;
   hanzi: string;
   pinyin: string;
+  jyutping?: string;
   definition: string;
   radicals: unknown;
   components: unknown;
@@ -17,6 +18,7 @@ export function nodeToClient(n: {
     id: n.id,
     hanzi: n.hanzi,
     pinyin: n.pinyin,
+    jyutping: n.jyutping ?? "",
     definition: n.definition,
     radicals: asStringArray(n.radicals),
     components: asStringArray(n.components),

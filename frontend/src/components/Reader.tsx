@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { DictLookup } from "@/lib/types";
+import { useLearningPreferences } from "@/contexts/LearningPreferencesContext";
 import { PageHeader } from "./PageHeader";
 import { WordPanel } from "./WordPanel";
 
@@ -25,14 +26,18 @@ const NEXT_STEPS = [
   { href: "/daily", title: "Daily Game", body: "Describe an image in Chinese. AI grades you and hints." },
 ];
 
-/** Return the display pinyin from a token's first entry (prefer tone-mark form). */
-function displayPinyin(tok: Token): string {
+/** Return romanization from a token's first entry. */
+function tokenRomanization(
+  tok: Token,
+  romanization: (entry: DictLookup["entries"][0]) => string,
+): string {
   const e = tok.entries[0];
   if (!e) return "";
-  return e.pinyin || e.pinyin_numbered || "";
+  return romanization(e);
 }
 
 export function Reader({ initialText }: { initialText?: string }) {
+  const { displayHanzi, romanization, preferences } = useLearningPreferences();
   const [text, setText] = useState(initialText ?? "");
   const [segmented, setSegmented] = useState<Segmented | null>(null);
   const [loading, setLoading] = useState(false);
@@ -136,7 +141,7 @@ export function Reader({ initialText }: { initialText?: string }) {
                     onChange={(e) => setShowPinyin(e.target.checked)}
                     className="h-4 w-4 accent-accent"
                   />
-                  Show pinyin
+                  Show {preferences.audio === "cantonese" ? "jyutping" : "pinyin"}
                 </label>
               </div>
 
@@ -147,7 +152,8 @@ export function Reader({ initialText }: { initialText?: string }) {
                     return <span key={i}>{tok.token}</span>;
                   }
                   const active = selected?.word === tok.token;
-                  const py = showPinyin ? displayPinyin(tok) : "";
+                  const displayed = displayHanzi(tok.token);
+                  const py = showPinyin ? tokenRomanization(tok, romanization) : "";
 
                   if (showPinyin && py) {
                     return (
@@ -157,7 +163,7 @@ export function Reader({ initialText }: { initialText?: string }) {
                         data-active={active ? "true" : undefined}
                         onClick={() => onTokenClick(tok)}
                       >
-                        {tok.token}
+                        {displayed}
                         <rt className="text-[0.55em] text-ink/60">{py}</rt>
                       </ruby>
                     );
@@ -169,9 +175,9 @@ export function Reader({ initialText }: { initialText?: string }) {
                       className="hanzi-token"
                       data-active={active ? "true" : undefined}
                       onClick={() => onTokenClick(tok)}
-                      title={tok.entries[0]?.pinyin || tok.entries[0]?.pinyin_numbered || ""}
+                      title={tokenRomanization(tok, romanization)}
                     >
-                      {tok.token}
+                      {displayed}
                     </span>
                   );
                 })}

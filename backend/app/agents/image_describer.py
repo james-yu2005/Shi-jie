@@ -27,6 +27,7 @@ from langgraph.graph import END, START, StateGraph
 
 from ..llm import safe_json, text_llm, vision_llm
 from .. import dictionary as dct
+from ..locale import script_label, tutor_role
 
 # ---------- state ----------
 class GameState(TypedDict, total=False):
@@ -37,6 +38,8 @@ class GameState(TypedDict, total=False):
     attempt_number: int   # 1..3
     max_attempts: int     # 3
     difficulty: str       # "easy" | "medium" | "hard"
+    script: str
+    locale: str
     # outputs
     score: int
     solved: bool
@@ -69,18 +72,20 @@ _DIFFICULTY_RULES = {
 }
 
 # ---------- nodes ----------
-_DESCRIBE_SYSTEM = (
-    "You are a Mandarin teacher building a description target for a guessing "
-    "game. Look at the image and respond with strict JSON:\n"
-    '{ "description_zh": "<1-2 short Simplified-Chinese sentences describing'
-    ' the main scene>", "elements": ["<main element 1>", "<main element 2>"] }\n'
-    "Focus on the BIG picture only — what is this place/thing and what stands "
-    "out at a glance (e.g. restaurant, chairs, wooden furniture). "
-    "Use 2-3 elements max: main subject, setting/type, and at most one obvious "
-    "detail. Do NOT list decorative or secondary details (lighting style, "
-    "glassware, window size, interior design adjectives) unless they are the "
-    "clear focal point of the image. Output ONLY the JSON."
-)
+def _describe_system(script: str, locale: str) -> str:
+    script_name = script_label(script)
+    return (
+        f"You are a {tutor_role(locale)} building a description target for a guessing "
+        "game. Look at the image and respond with strict JSON:\n"
+        f'{{ "description_zh": "<1-2 short {script_name} sentences describing'
+        ' the main scene>", "elements": ["<main element 1>", "<main element 2>"] }\n'
+        "Focus on the BIG picture only — what is this place/thing and what stands "
+        "out at a glance (e.g. restaurant, chairs, wooden furniture). "
+        "Use 2-3 elements max: main subject, setting/type, and at most one obvious "
+        "detail. Do NOT list decorative or secondary details (lighting style, "
+        "glassware, window size, interior design adjectives) unless they are the "
+        "clear focal point of the image. Output ONLY the JSON."
+    )
 
 def describe_image(state: GameState) -> GameState:
     if state.get("target_desc"):
@@ -88,9 +93,11 @@ def describe_image(state: GameState) -> GameState:
             "target_desc": state["target_desc"],
             "target_elements": state.get("target_elements") or [],
         }
-        
+
+    script = state.get("script", "simplified")
+    locale = state.get("locale", "mandarin")
     msgs = [
-        SystemMessage(content=_DESCRIBE_SYSTEM),
+        SystemMessage(content=_describe_system(script, locale)),
         HumanMessage(
             content=[
                 {"type": "text", "text": "Describe this image for the game."},
@@ -106,10 +113,11 @@ def describe_image(state: GameState) -> GameState:
     }
 
 
-def _grade_system(difficulty: str) -> str:
+def _grade_system(difficulty: str, locale: str) -> str:
     rules = _DIFFICULTY_RULES.get(difficulty, _DIFFICULTY_RULES["easy"])
+    lang = locale_label(locale)
     return (
-        "You are a strict but kind Mandarin grader for an image-description "
+        f"You are a strict but kind {lang} grader for an image-description "
         "guessing game. You will receive: (a) the target Chinese description, "
         "(b) the key visible elements, (c) the learner's Chinese attempt, "
         "(d) attempt number out of max attempts.\n\n"
@@ -134,7 +142,12 @@ def _grade_system(difficulty: str) -> str:
     )
 
 
-def _extract_vocab_hints(target_desc: str | None, attempt_num: int, max_attempts: int) -> list[dict]:
+def _extract_vocab_hints(
+    target_desc: str | None,
+    attempt_num: int,
+    max_attempts: int,
+    locale: str = "mandarin",
+) -> list[dict]:
     """Extract 1-2 vocabulary words from target description to help learner.
     
     Attempt 1: 1 word, Attempt 2: 1-2 more words, Final attempt: none (show reveal instead)
@@ -167,7 +180,8 @@ def _extract_vocab_hints(target_desc: str | None, attempt_num: int, max_attempts
         word, entry = vocab_candidates[i]
         hints.append({
             "hanzi": word,
-            "pinyin": entry.pinyin,
+            "pinyin": dct.romanization_for(entry, "mandarin"),
+            "jyutping": entry.jyutping or "",
             "definition": "; ".join(entry.definitions[:2]),  # first 2 definitions
         })
     
@@ -183,7 +197,7 @@ def grade_attempt(state: GameState) -> GameState:
         "max_attempts": state.get("max_attempts", 3),
     }
     msgs = [
-        SystemMessage(content=_grade_system(state.get("difficulty", "easy"))),
+        SystemMessage(content=_grade_system(state.get("difficulty", "easy"), state.get("locale", "mandarin"))),
         HumanMessage(content=json.dumps(payload, ensure_ascii=False)),
     ]
     raw = text_llm(0.0).invoke(msgs).content
@@ -197,6 +211,7 @@ def grade_attempt(state: GameState) -> GameState:
         state.get("target_desc"),
         state.get("attempt_number", 1),
         state.get("max_attempts", 3),
+        state.get("locale", "mandarin"),
     )
     
     return {
@@ -237,6 +252,8 @@ def run(
     target_elements: list[str] | None,
     max_attempts: int = 3,
     difficulty: str = "easy",
+    script: str = "simplified",
+    locale: str = "mandarin",
 ) -> dict:
     """Run one grading turn; returns the merged final state as a plain dict."""
     init: GameState = {
@@ -247,6 +264,8 @@ def run(
         "target_desc": target_desc,
         "target_elements": target_elements or [],
         "difficulty": difficulty,
+        "script": script,
+        "locale": locale,
     }
     out = get_graph().invoke(init)
     # Surface the cached/derived target so the caller can persist it.

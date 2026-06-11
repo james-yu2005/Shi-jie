@@ -53,11 +53,11 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
     } catch { /* ignore */ }
   }, [setCards]);
 
-  const add = useCallback(async (hanzi: string, pinyin: string, definition: string) => {
+  const add = useCallback(async (hanzi: string, pinyin: string, jyutping: string, definition: string) => {
     try {
       const j = await apiJson<{ flashcard: Flashcard }>("/api/bucket", {
         method: "POST",
-        json: { hanzi, pinyin, definition },
+        json: { hanzi, pinyin, jyutping, definition },
       });
       void setCards((cs) => {
         const exists = cs.some((c) => c.id === j.flashcard.id);

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { backendFetch } from "@/lib/backend";
+import { backendLearningPrefs, getUserPreferences } from "@/lib/preferences";
 import { DAILY_MAX_ATTEMPTS } from "@/lib/daily";
 
 const Body = z.object({ text: z.string().min(1).max(500) });
@@ -15,7 +16,7 @@ type GradeResult = {
   grammar_errors: { wrong: string; correct: string; explanation: string }[];
   hint: string;
   reveal: string | null;
-  vocab_hints?: { hanzi: string; pinyin: string; definition: string }[];
+  vocab_hints?: { hanzi: string; pinyin: string; jyutping?: string; definition: string }[];
   target_desc?: string;
   target_elements?: string[];
 };
@@ -45,6 +46,7 @@ export const POST = withAuth(async (user, req) => {
   const targetElements = Array.isArray(game.targetElements)
     ? (game.targetElements as string[])
     : [];
+  const prefs = await getUserPreferences(user.id);
 
   let result: GradeResult;
   try {
@@ -58,6 +60,7 @@ export const POST = withAuth(async (user, req) => {
         target_desc: game.targetDesc ?? null,
         target_elements: targetElements,
         difficulty: game.difficulty ?? "easy",
+        ...backendLearningPrefs(prefs),
       },
     });
   } catch (e) {

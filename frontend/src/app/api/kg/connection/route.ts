@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { backendFetch } from "@/lib/backend";
 import { withAuth } from "@/lib/auth";
+import { backendLearningPrefs, getUserPreferences } from "@/lib/preferences";
 import { prisma } from "@/lib/prisma";
 
 const Body = z.object({
@@ -40,6 +41,7 @@ export const POST = withAuth(async (user, req) => {
   });
 
   try {
+    const prefs = await getUserPreferences(user.id);
     const data = await backendFetch<{ explanation: string }>(
       "/kg/connection",
       {
@@ -48,6 +50,7 @@ export const POST = withAuth(async (user, req) => {
           word_a: source.hanzi,
           word_b: target.hanzi,
           edges: edges.map((e) => ({ type: e.type, reason: e.reason })),
+          ...backendLearningPrefs(prefs),
         },
       },
     );

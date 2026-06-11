@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Flashcard" ADD COLUMN "jyutping" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "KgNode" ADD COLUMN "jyutping" TEXT NOT NULL DEFAULT '';

@@ -34,17 +34,18 @@ from .. import dictionary as cedict
 from .. import hanzi_data
 from ..dictionary import is_hanzi as _is_hanzi
 from ..llm import safe_json, text_llm
+from ..locale import locale_label, script_label, tutor_role
 
 
 # ---------- local lookups ----------
-def _cedict_pinyin_definition(hanzi: str) -> tuple[str, str]:
-    """Take the best CEDICT entry's pinyin and a compact english definition."""
+def _cedict_pinyin_definition(hanzi: str) -> tuple[str, str, str | None]:
+    """Take the best CEDICT entry's pinyin, definition, and optional jyutping."""
     entries = cedict.lookup(hanzi)
     if not entries:
-        return "", ""
+        return "", "", None
     e = entries[0]
     defs = [d for d in e.definitions if d.strip()][:3]
-    return e.pinyin, "; ".join(defs)
+    return e.pinyin, "; ".join(defs), e.jyutping
 
 
 def _components_for_word(hanzi: str) -> tuple[list[str], list[str]]:
@@ -126,7 +127,7 @@ def _semantic_tags(
 
 
 def analyze(hanzi: str, existing_tags: list[str] | None = None) -> dict[str, Any]:
-    pinyin, definition = _cedict_pinyin_definition(hanzi)
+    pinyin, definition, jyutping = _cedict_pinyin_definition(hanzi)
     radicals, components = _components_for_word(hanzi)
     try:
         tags = _semantic_tags(hanzi, pinyin, definition, existing_tags or [])
@@ -134,6 +135,7 @@ def analyze(hanzi: str, existing_tags: list[str] | None = None) -> dict[str, Any
         tags = []
     return {
         "pinyin": pinyin,
+        "jyutping": jyutping,
         "definition": definition,
         "radicals": radicals,
         "components": components,
@@ -141,46 +143,52 @@ def analyze(hanzi: str, existing_tags: list[str] | None = None) -> dict[str, Any
     }
 
 
-# ---------- connection ----------
-_CONNECTION_SYSTEM = (
-    "You are a Mandarin teacher. Two Chinese words are linked in a "
-    "learner's knowledge graph because they share either a semantic "
-    "theme, a character radical, or both. Given the words and the "
-    "stored edge reasons, write a SHORT english explanation (1-2 "
-    "sentences, under 50 words) that confirms why they are linked. "
-    "Name the shared radical or meaning explicitly. Plain text, no "
-    "markdown."
-)
+def _connection_system(locale: str) -> str:
+    return (
+        f"You are a {tutor_role(locale)}. Two Chinese words are linked in a "
+        "learner's knowledge graph because they share either a semantic "
+        "theme, a character radical, or both. Given the words and the "
+        "stored edge reasons, write a SHORT english explanation (1-2 "
+        "sentences, under 50 words) that confirms why they are linked. "
+        "Name the shared radical or meaning explicitly. Plain text, no "
+        "markdown."
+    )
 
 
-def explain_connection(word_a: str, word_b: str, edges: list[dict]) -> str:
+def explain_connection(
+    word_a: str,
+    word_b: str,
+    edges: list[dict],
+    locale: str = "mandarin",
+) -> str:
     payload = {"word_a": word_a, "word_b": word_b, "edges": edges}
     msgs = [
-        SystemMessage(content=_CONNECTION_SYSTEM),
+        SystemMessage(content=_connection_system(locale)),
         HumanMessage(content=json.dumps(payload, ensure_ascii=False)),
     ]
     return str(text_llm(0.0).invoke(msgs).content or "").strip()
 
 
-# ---------- suggest ----------
-_SUGGEST_SYSTEM = (
-    "You are a Mandarin teacher building a learner's vocabulary "
-    "knowledge graph. Given a focus word and the existing graph, "
-    "suggest 3-5 NEW Simplified Chinese words that would create rich "
-    "new connections.\n\n"
-    "Strong preference rules:\n"
-    "- At least 2 suggestions should share one of the existing_radicals "
-    "with the focus word (so they form character edges).\n"
-    "- At least 2 suggestions should match one of the existing_tags "
-    "(so they form meaning edges).\n"
-    "- Avoid words already in 'existing'. Keep at HSK 2-5 level.\n\n"
-    "Return STRICT JSON only:\n"
-    '{ "suggestions": [\n'
-    '   { "hanzi": "..", "pinyin": "..", "definition": "..", '
-    '"reason": "<1-sentence why it connects, naming the shared radical '
-    'or tag>" }\n'
-    "] }"
-)
+def _suggest_system(script: str, locale: str) -> str:
+    script_name = script_label(script)
+    return (
+        f"You are a {tutor_role(locale)} building a learner's vocabulary "
+        "knowledge graph. Given a focus word and the existing graph, "
+        f"suggest 3-5 NEW {script_name} words that would create rich "
+        "new connections.\n\n"
+        "Strong preference rules:\n"
+        "- At least 2 suggestions should share one of the existing_radicals "
+        "with the focus word (so they form character edges).\n"
+        "- At least 2 suggestions should match one of the existing_tags "
+        "(so they form meaning edges).\n"
+        "- Avoid words already in 'existing'. Keep at HSK 2-5 level.\n\n"
+        "Return STRICT JSON only:\n"
+        '{ "suggestions": [\n'
+        '   { "hanzi": "..", "pinyin": "..", "definition": "..", '
+        '"reason": "<1-sentence why it connects, naming the shared radical '
+        'or tag>" }\n'
+        "] }"
+    )
 
 
 def suggest_related(
@@ -188,6 +196,8 @@ def suggest_related(
     existing: list[str],
     existing_tags: list[str] | None = None,
     existing_radicals: list[str] | None = None,
+    script: str = "simplified",
+    locale: str = "mandarin",
 ) -> list[dict]:
     payload = {
         "focus": focus,
@@ -198,7 +208,7 @@ def suggest_related(
         )[:60],
     }
     msgs = [
-        SystemMessage(content=_SUGGEST_SYSTEM),
+        SystemMessage(content=_suggest_system(script, locale)),
         HumanMessage(content=json.dumps(payload, ensure_ascii=False)),
     ]
     data = safe_json(text_llm(0.0).invoke(msgs).content)

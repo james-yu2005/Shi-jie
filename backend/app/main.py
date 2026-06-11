@@ -98,6 +98,7 @@ def health() -> dict[str, Any]:
     return {
         "ok": True,
         "cedict_loaded": dct.CEDICT_FILE.exists(),
+        "canto_loaded": dct.CEDICT_CANTO_FILE.exists(),
         "hanzi_dictionary_loaded": hanzi_data.is_loaded(),
         "openai_key_present": bool(os.environ.get("OPENAI_API_KEY")),
     }
@@ -123,9 +124,11 @@ def segment(req: SegmentRequest) -> dict[str, Any]:
 
 
 @app.get("/dictionary/lookup")
-def lookup(word: str) -> dict[str, Any]:
+def lookup(word: str, audio: str = "mandarin") -> dict[str, Any]:
     if not word:
         raise HTTPException(400, "word is required")
+    if audio not in ("mandarin", "cantonese"):
+        audio = "mandarin"
     entries = dct.lookup(word)
     # character-level stroke order links for each hanzi in the word
     chars = []
@@ -141,23 +144,35 @@ def lookup(word: str) -> dict[str, Any]:
         "word": word,
         "entries": [e.to_dict() for e in entries],
         "characters": chars,
-        "audio_url": dct.audio_url(word),
+        "audio_url": dct.audio_url(word, audio),  # type: ignore[arg-type]
     }
 
 
 # ---------- AI ----------
-class ExplainRequest(BaseModel):
+class LearningPrefs(BaseModel):
+    script: str = "simplified"
+    locale: str = "mandarin"
+
+
+class ExplainRequest(LearningPrefs):
     word: str
     context: str | None = None
 
 
 @app.post("/ai/explain")
 def ai_explain(req: ExplainRequest) -> dict[str, str]:
-    text = run_agent("explain", word_explainer.explain, req.word, req.context)
+    text = run_agent(
+        "explain",
+        word_explainer.explain,
+        req.word,
+        req.context,
+        req.script,
+        req.locale,
+    )
     return {"markdown": text}
 
 
-class ParagraphRequest(BaseModel):
+class ParagraphRequest(LearningPrefs):
     words: list[str] = Field(default_factory=list)
 
 
@@ -165,12 +180,18 @@ class ParagraphRequest(BaseModel):
 def ai_paragraph(req: ParagraphRequest) -> dict[str, str]:
     if not req.words:
         raise HTTPException(400, "words must be non-empty")
-    text = run_agent("paragraph", paragraph_generator.generate, req.words)
+    text = run_agent(
+        "paragraph",
+        paragraph_generator.generate,
+        req.words,
+        req.script,
+        req.locale,
+    )
     return {"paragraph": text}
 
 
 # ---------- daily image game ----------
-class DailyGradeRequest(BaseModel):
+class DailyGradeRequest(LearningPrefs):
     image_url: str
     attempt_text: str
     attempt_number: int = Field(ge=1, le=3)
@@ -192,6 +213,8 @@ def daily_grade(req: DailyGradeRequest) -> dict[str, Any]:
         target_elements=req.target_elements,
         max_attempts=req.max_attempts,
         difficulty=req.difficulty,
+        script=req.script,
+        locale=req.locale,
     )
 
 
@@ -206,7 +229,7 @@ def kg_analyze(req: KgAnalyzeRequest) -> dict[str, Any]:
     return run_agent("analyze", kg_analyzer.analyze, req.hanzi, req.existing_tags)
 
 
-class KgConnectionRequest(BaseModel):
+class KgConnectionRequest(LearningPrefs):
     word_a: str
     word_b: str
     edges: list[dict] = Field(default_factory=list)
@@ -220,11 +243,12 @@ def kg_connection(req: KgConnectionRequest) -> dict[str, str]:
         req.word_a,
         req.word_b,
         req.edges,
+        req.locale,
     )
     return {"explanation": text}
 
 
-class KgSuggestRequest(BaseModel):
+class KgSuggestRequest(LearningPrefs):
     focus: str
     existing: list[str] = Field(default_factory=list)
     existing_tags: list[str] = Field(default_factory=list)
@@ -240,5 +264,7 @@ def kg_suggest(req: KgSuggestRequest) -> dict[str, Any]:
         req.existing,
         req.existing_tags,
         req.existing_radicals,
+        req.script,
+        req.locale,
     )
     return {"suggestions": suggestions}

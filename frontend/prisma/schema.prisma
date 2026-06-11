@@ -49,6 +49,8 @@ model User {
   dailyGames    DailyGame[]
   kgNodes       KgNode[]
   kgEdges       KgEdge[]
+  script        String      @default("simplified") // "simplified" | "traditional"
+  audio         String      @default("mandarin")   // "mandarin" | "cantonese"
   createdAt     DateTime    @default(now())
 }
 
@@ -68,6 +70,7 @@ model Flashcard {
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   hanzi        String
   pinyin       String
+  jyutping     String   @default("")
   definition   String
   notes        String?
   // SM-2 spaced repetition fields
@@ -114,6 +117,7 @@ model KgNode {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   hanzi        String
   pinyin       String
+  jyutping     String   @default("")
   definition   String
   radicals     Json     @default("[]") // string[]: shared subcomponents
   components   Json     @default("[]") // string[]: per-character breakdown

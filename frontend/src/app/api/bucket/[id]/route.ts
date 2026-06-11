@@ -7,6 +7,7 @@ type Ctx = { params: { id: string } };
 
 const PatchBody = z.object({
   pinyin: z.string().optional(),
+  jyutping: z.string().optional(),
   definition: z.string().optional(),
   notes: z.string().optional().nullable(),
 });

@@ -18,6 +18,7 @@ export default async function FlashcardsPage() {
         id: c.id,
         hanzi: c.hanzi,
         pinyin: c.pinyin,
+        jyutping: c.jyutping,
         definition: c.definition,
         notes: c.notes,
         dueAt: c.dueAt?.toISOString() ?? null,

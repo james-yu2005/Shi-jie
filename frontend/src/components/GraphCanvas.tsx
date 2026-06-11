@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { KgEdge, KgNode } from "@/lib/types";
+import { useLearningPreferences } from "@/contexts/LearningPreferencesContext";
 
 type Pos = { x: number; y: number; vx: number; vy: number };
 type Viewport = { x: number; y: number; scale: number };
@@ -32,6 +33,9 @@ export function GraphCanvas({
   selectedId,
   onSelect,
 }: Props) {
+  const { displayHanzi } = useLearningPreferences();
+  const hanziFont =
+    '"Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
   const positionsRef = useRef<Record<string, Pos>>({});
   const draggingRef = useRef<{ id: string; offsetX: number; offsetY: number } | null>(
     null,
@@ -411,10 +415,10 @@ export function GraphCanvas({
                   textAnchor="middle"
                   dominantBaseline="central"
                   fontSize={n.hanzi.length > 2 ? 15 : n.hanzi.length === 2 ? 20 : 24}
-                  fontFamily='"Noto Sans SC", "PingFang SC", sans-serif'
+                  fontFamily={hanziFont}
                   fill="#1a1a1a"
                 >
-                  {n.hanzi}
+                  {displayHanzi(n.hanzi)}
                 </text>
                 {n.pinyin && (
                   <text

@@ -3,12 +3,15 @@ import { useCallback, useState } from "react";
 import useSWR from "swr";
 import type { Flashcard } from "@/lib/types";
 import { apiJson, swrFetcher } from "@/lib/api";
+import { useLearningPreferences } from "@/contexts/LearningPreferencesContext";
+import { RomanizationLines } from "./WordHead";
 
 type Quality = 1 | 3 | 5;
 
 type Props = { onDone?: () => void };
 
 export function ReviewMode({ onDone }: Props) {
+  const { displayHanzi } = useLearningPreferences();
   const { data, mutate, isLoading } = useSWR<{ cards: Flashcard[] }>(
     "/api/bucket/review",
     swrFetcher,
@@ -23,7 +26,6 @@ export function ReviewMode({ onDone }: Props) {
   const cards = data?.cards ?? [];
   const card = cards[idx];
   const total = cards.length;
-
   const rate = useCallback(
     async (quality: Quality) => {
       if (!card) return;
@@ -99,15 +101,15 @@ export function ReviewMode({ onDone }: Props) {
         className="card flex min-h-[220px] cursor-pointer flex-col items-center justify-center space-y-3 select-none"
         onClick={() => !flipped && setFlipped(true)}
       >
-        <div className="hanzi text-5xl font-bold">{card.hanzi}</div>
+        <div className="hanzi text-5xl font-bold">{displayHanzi(card.hanzi)}</div>
 
         {!flipped && (
           <p className="text-sm text-ink/50">tap to reveal</p>
         )}
 
         {flipped && (
-          <div className="mt-2 space-y-1 text-center">
-            <div className="text-base text-ink/70">{card.pinyin}</div>
+          <div className="mt-2 space-y-2 text-center">
+            <RomanizationLines pinyin={card.pinyin} jyutping={card.jyutping ?? ""} />
             <div className="text-sm">{card.definition}</div>
             {card.notes && (
               <div className="text-xs text-ink/50 italic">{card.notes}</div>

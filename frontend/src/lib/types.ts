@@ -1,9 +1,18 @@
 // Types shared between the API routes and React components.
+export type ScriptPreference = "simplified" | "traditional";
+export type AudioPreference = "mandarin" | "cantonese";
+
+export type UserPreferences = {
+  script: ScriptPreference;
+  audio: AudioPreference;
+};
+
 export type DictEntry = {
   traditional: string;
   simplified: string;
   pinyin_numbered: string;
   pinyin: string;
+  jyutping?: string | null;
   definitions: string[];
 };
 
@@ -25,6 +34,7 @@ export type Flashcard = {
   id: string;
   hanzi: string;
   pinyin: string;
+  jyutping?: string;
   definition: string;
   notes?: string | null;
   dueAt?: string | null;
@@ -42,7 +52,7 @@ export type GameAttempt = {
   grammar_errors: { wrong: string; correct: string; explanation: string }[];
   hint: string;
   reveal: string | null;
-  vocab_hints?: { hanzi: string; pinyin: string; definition: string }[];
+  vocab_hints?: { hanzi: string; pinyin: string; jyutping?: string; definition: string }[];
 };
 
 export type DailyDifficulty = "easy" | "medium" | "hard";
@@ -76,6 +86,7 @@ export type KgNode = {
   id: string;
   hanzi: string;
   pinyin: string;
+  jyutping?: string;
   definition: string;
   radicals: string[];
   components: string[];

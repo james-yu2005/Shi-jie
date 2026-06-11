@@ -7,7 +7,8 @@ export async function GET(req: Request) {
   if (!word) {
     return NextResponse.json({ error: "word required" }, { status: 400 });
   }
-  const qs = new URLSearchParams({ word });
+  const audio = url.searchParams.get("audio") ?? "mandarin";
+  const qs = new URLSearchParams({ word, audio });
   try {
     const data = await backendFetch(`/dictionary/lookup?${qs.toString()}`);
     return NextResponse.json(data);

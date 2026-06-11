@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateParagraph } from "@/lib/backend";
 import { withAuth } from "@/lib/auth";
+import { getUserPreferences } from "@/lib/preferences";
 import { prisma } from "@/lib/prisma";
 
 const Body = z.object({
@@ -22,8 +23,9 @@ export const POST = withAuth(async (user, req) => {
   }
 
   const words = nodes.map((n) => n.hanzi);
+  const prefs = await getUserPreferences(user.id);
   try {
-    const data = await generateParagraph(words);
+    const data = await generateParagraph(words, prefs);
     return NextResponse.json({ paragraph: data.paragraph, words });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 502 });
