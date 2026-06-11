@@ -11,7 +11,8 @@ export const STORAGE_KEY = "shijie-learning-prefs";
 const SCRIPT_VALUES = new Set<ScriptPreference>(["simplified", "traditional"]);
 const AUDIO_VALUES = new Set<AudioPreference>(["mandarin", "cantonese"]);
 
-export function normalizePreferences(raw: Partial<UserPreferences>): UserPreferences {
+/** Accepts DB/localStorage strings; narrows to typed preferences. */
+export function normalizePreferences(raw: Partial<{ script?: string; audio?: string }>): UserPreferences {
   return {
     script: SCRIPT_VALUES.has(raw.script as ScriptPreference)
       ? (raw.script as ScriptPreference)
