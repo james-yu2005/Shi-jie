@@ -11,8 +11,14 @@ export const STORAGE_KEY = "shijie-learning-prefs";
 const SCRIPT_VALUES = new Set<ScriptPreference>(["simplified", "traditional"]);
 const AUDIO_VALUES = new Set<AudioPreference>(["mandarin", "cantonese"]);
 
+/** Untyped script/audio from Prisma, localStorage, or partial PATCH bodies. */
+export type RawUserPreferences = Partial<{
+  script?: string | null;
+  audio?: string | null;
+}>;
+
 /** Accepts DB/localStorage strings; narrows to typed preferences. */
-export function normalizePreferences(raw: Partial<{ script?: string; audio?: string }>): UserPreferences {
+export function normalizePreferences(raw: RawUserPreferences = {}): UserPreferences {
   return {
     script: SCRIPT_VALUES.has(raw.script as ScriptPreference)
       ? (raw.script as ScriptPreference)

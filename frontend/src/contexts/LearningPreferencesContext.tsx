@@ -17,6 +17,7 @@ import {
   DEFAULT_PREFERENCES,
   normalizePreferences,
   STORAGE_KEY,
+  type RawUserPreferences,
 } from "@/lib/preferences";
 import { pickEntryForm, toPreferredScriptSync } from "@/lib/script";
 import { apiJson, swrFetcher } from "@/lib/api";
@@ -46,7 +47,7 @@ function readLocalPreferences(): UserPreferences {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_PREFERENCES;
-    return normalizePreferences(JSON.parse(raw) as Partial<UserPreferences>);
+    return normalizePreferences(JSON.parse(raw) as RawUserPreferences);
   } catch {
     return DEFAULT_PREFERENCES;
   }

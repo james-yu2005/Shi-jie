@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withAuth } from "@/lib/auth";
-import { DEFAULT_PREFERENCES, normalizePreferences } from "@/lib/preferences";
+import {
+  DEFAULT_PREFERENCES,
+  normalizePreferences,
+  type RawUserPreferences,
+} from "@/lib/preferences";
 import { prisma } from "@/lib/prisma";
+
+const PREF_SELECT = { script: true, audio: true } as const;
 
 const PatchBody = z
   .object({
@@ -16,9 +22,9 @@ const PatchBody = z
 export const GET = withAuth(async (user) => {
   const row = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { script: true, audio: true },
+    select: PREF_SELECT,
   });
-  return NextResponse.json(normalizePreferences(row ?? DEFAULT_PREFERENCES));
+  return NextResponse.json(normalizePreferences((row ?? {}) satisfies RawUserPreferences));
 });
 
 export const PATCH = withAuth(async (user, req) => {
@@ -29,15 +35,19 @@ export const PATCH = withAuth(async (user, req) => {
 
   const current = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { script: true, audio: true },
+    select: PREF_SELECT,
   });
-  const merged = normalizePreferences({ ...DEFAULT_PREFERENCES, ...current, ...parsed.data });
+  const merged = normalizePreferences({
+    ...DEFAULT_PREFERENCES,
+    ...(current ?? {}),
+    ...parsed.data,
+  });
 
   const updated = await prisma.user.update({
     where: { id: user.id },
     data: { script: merged.script, audio: merged.audio },
-    select: { script: true, audio: true },
+    select: PREF_SELECT,
   });
 
-  return NextResponse.json(normalizePreferences(updated));
+  return NextResponse.json(normalizePreferences(updated satisfies RawUserPreferences));
 });
