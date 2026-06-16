@@ -3,6 +3,7 @@ import { memo, useCallback, useEffect, useState } from "react";
 import useSWR from "swr";
 import type { DailyGame, DailyDifficulty, GameAttempt, DailyStats } from "@/lib/types";
 import { apiJson, swrFetcher } from "@/lib/api";
+import { DAILY_EXAMPLE } from "@/lib/daily";
 import { HeatmapCalendar } from "./HeatmapCalendar";
 import { PageHeader } from "./PageHeader";
 import { RomanizationLines } from "./WordHead";
@@ -219,7 +220,7 @@ export function DailyClient() {
             </div>
           </div>
 
-          {game.attempts.length > 0 && (
+          {game.attempts.length > 0 ? (
             <div className="space-y-3">
               {game.attempts.map((a, i) => (
                 <AttemptCard
@@ -230,6 +231,8 @@ export function DailyClient() {
                 />
               ))}
             </div>
+          ) : (
+            <DailyExampleShowcase />
           )}
         </div>
       </div>
@@ -261,22 +264,87 @@ export function DailyClient() {
   );
 }
 
+function DailyExampleShowcase() {
+  const [first, last] = DAILY_EXAMPLE.attempts;
+  return (
+    <div className="subtle-card space-y-4 border-dashed">
+      <div>
+        <div className="label mb-1">Example puzzle</div>
+        <p className="text-sm text-ink/70">
+          Describe the image in Chinese. After each attempt you get a score,
+          vocabulary hints, coaching notes, and on your last attempt the full
+          target answer.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,160px)_1fr]">
+        <div className="overflow-hidden rounded-lg border border-ink/10">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={DAILY_EXAMPLE.imageUrl}
+            alt="Example puzzle: orange cat on a desk"
+            className="aspect-[4/3] w-full object-cover"
+            decoding="async"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+        <div className="space-y-2 text-sm">
+          <div>
+            <span className="label">You might write</span>
+            <div className="hanzi mt-1 text-base">{first.prompt}</div>
+          </div>
+          <div>
+            <span className="label">Target answer</span>
+            <div className="hanzi mt-1 text-base text-green-800">
+              {DAILY_EXAMPLE.targetDesc}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <AttemptCard idx={1} attempt={first} isLatest={false} example />
+        <AttemptCard
+          idx={3}
+          attempt={last}
+          isLatest={false}
+          example
+          exampleLabel="After more detail (or final attempt)"
+        />
+      </div>
+    </div>
+  );
+}
+
 const AttemptCard = memo(function AttemptCard({
   idx,
   attempt,
   isLatest,
+  example = false,
+  exampleLabel,
 }: {
   idx: number;
   attempt: GameAttempt;
   isLatest: boolean;
+  example?: boolean;
+  exampleLabel?: string;
 }) {
   return (
-    <div className="card space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold">Attempt {idx}</span>
-        <span className={scoreBadgeClass(attempt)}>
-          {attempt.score}/100 {attempt.solved ? "· solved" : ""}
+    <div className={`card space-y-2 ${example ? "border-dashed bg-paper/60" : ""}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-semibold">
+          {example ? exampleLabel ?? `Attempt ${idx}` : `Attempt ${idx}`}
         </span>
+        <div className="flex items-center gap-2">
+          {example && (
+            <span className="rounded-full bg-ink/5 px-2 py-0.5 text-xs text-ink/50">
+              Example
+            </span>
+          )}
+          <span className={scoreBadgeClass(attempt)}>
+            {attempt.score}/100 {attempt.solved ? "· solved" : ""}
+          </span>
+        </div>
       </div>
       <div className="hanzi text-base">{attempt.prompt}</div>
 

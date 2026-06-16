@@ -1,4 +1,42 @@
+import type { GameAttempt } from "./types";
+
 export const DAILY_MAX_ATTEMPTS = 3;
+
+/** Static demo puzzle for onboarding — orange cat on a desk. */
+export const DAILY_EXAMPLE = {
+  imageUrl:
+    "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=400&h=300&q=80",
+  targetDesc: "一只橙色的猫坐在木桌上。",
+  attempts: [
+    {
+      prompt: "有一只猫。",
+      score: 42,
+      solved: false,
+      missing_elements: ["orange fur", "wooden table"],
+      grammar_errors: [],
+      hint: "You spotted the cat — now add its color and where it's sitting.",
+      reveal: null,
+      vocab_hints: [
+        {
+          hanzi: "桌子",
+          pinyin: "zhuōzi",
+          jyutping: "coek1 zi2",
+          definition: "table; desk",
+        },
+      ],
+    },
+    {
+      prompt: "一只橙色的猫坐在木桌上。",
+      score: 95,
+      solved: true,
+      missing_elements: [],
+      grammar_errors: [],
+      hint: "",
+      reveal: "一只橙色的猫坐在木桌上。",
+      vocab_hints: [],
+    },
+  ] satisfies GameAttempt[],
+};
 
 /** Curated Unsplash CDN photos — clear, learner-friendly subjects. */
 const DAILY_UNSPLASH_PHOTOS = [
