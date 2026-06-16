@@ -1,18 +1,22 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import type { DictLookup } from "@/lib/types";
+import type { DictLookup, ReaderReadResult } from "@/lib/types";
 import { useLearningPreferences } from "@/contexts/LearningPreferencesContext";
+import {
+  chineseForIndices,
+  sentenceGroupsFromResult,
+} from "@/lib/reader-sentences";
+import {
+  alignmentForToken,
+  isTokenHighlighted,
+  type ActiveLink,
+} from "@/lib/reader-alignment";
 import { PageHeader } from "./PageHeader";
 import { WordPanel } from "./WordPanel";
+import { TokenGlossBadge, TranslationSentence } from "./ReaderTranslation";
 
-type Token = {
-  token: string;
-  is_hanzi: boolean;
-  entries: DictLookup["entries"];
-};
-
-type Segmented = { tokens: Token[] };
+type Token = ReaderReadResult["tokens"][number];
 
 const HAN = /[\u3400-\u9fff\uf900-\ufaff]/;
 
@@ -26,7 +30,6 @@ const NEXT_STEPS = [
   { href: "/daily", title: "Daily Game", body: "Describe an image in Chinese. AI grades you and hints." },
 ];
 
-/** Return romanization from a token's first entry. */
 function tokenRomanization(
   tok: Token,
   romanization: (entry: DictLookup["entries"][0]) => string,
@@ -36,17 +39,32 @@ function tokenRomanization(
   return romanization(e);
 }
 
+function dictGloss(tok: Token): string | null {
+  const d = tok.entries[0]?.definitions?.[0];
+  if (!d) return null;
+  return d.split(";")[0].split("(")[0].trim() || null;
+}
+
 export function Reader({ initialText }: { initialText?: string }) {
-  const { displayHanzi, romanization, preferences } = useLearningPreferences();
+  const { displayHanzi, romanization, preferences, playAudio } = useLearningPreferences();
   const [text, setText] = useState(initialText ?? "");
-  const [segmented, setSegmented] = useState<Segmented | null>(null);
+  const [readResult, setReadResult] = useState<ReaderReadResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<{ word: string; context: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Display toggles
   const [showPinyin, setShowPinyin] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(true);
+  const [activeLink, setActiveLink] = useState<ActiveLink | null>(null);
+  const [playingSentence, setPlayingSentence] = useState<number | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const tokens = readResult?.tokens ?? null;
+  const sentences = readResult?.sentences ?? [];
+
+  const sentenceGroups = useMemo(() => {
+    if (!tokens) return [];
+    return sentenceGroupsFromResult(tokens, sentences);
+  }, [tokens, sentences]);
 
   useEffect(() => {
     if (initialText && initialText !== text) setText(initialText);
@@ -57,14 +75,27 @@ export function Reader({ initialText }: { initialText?: string }) {
     setError(null);
     if (!text.trim()) return;
     setLoading(true);
+    setActiveLink(null);
+    setPlayingSentence(null);
     try {
-      const res = await fetch("/api/dictionary/segment", {
+      const res = await fetch("/api/ai/translate", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ text }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setSegmented((await res.json()) as Segmented);
+      if (!res.ok) {
+        const fallback = await fetch("/api/dictionary/segment", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        if (!fallback.ok) throw new Error(`HTTP ${res.status}`);
+        const seg = (await fallback.json()) as { tokens: Token[] };
+        setReadResult({ tokens: seg.tokens, sentences: [] });
+        setError("Translation unavailable — showing segmentation only.");
+        return;
+      }
+      setReadResult((await res.json()) as ReaderReadResult);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -72,14 +103,17 @@ export function Reader({ initialText }: { initialText?: string }) {
     }
   }, [text]);
 
-  const sentences = useMemo(() => {
-    if (!segmented) return [] as string[];
-    const joined = segmented.tokens.map((t) => t.token).join("");
-    return joined.split(/(?<=[。！？!?\n])/).filter((s) => s.trim());
-  }, [segmented]);
+  const sentenceTexts = useMemo(() => {
+    if (!tokens) return [] as string[];
+    return sentenceGroups.map((indices) =>
+      chineseForIndices(tokens, indices, (t) => t),
+    );
+  }, [tokens, sentenceGroups]);
 
   function contextFor(word: string): string {
-    for (const s of sentences) { if (s.includes(word)) return s.trim(); }
+    for (const s of sentenceTexts) {
+      if (s.includes(word)) return s.trim();
+    }
     return "";
   }
 
@@ -95,11 +129,82 @@ export function Reader({ initialText }: { initialText?: string }) {
     setSelected({ word: t, context: contextFor(t) });
   }
 
+  function tokenGloss(sentenceIdx: number, tokenIdx: number, tok: Token): string {
+    const sent = sentences[sentenceIdx];
+    if (sent) {
+      const a = alignmentForToken(sent.alignments, tokenIdx);
+      if (a?.gloss) return a.gloss;
+    }
+    return dictGloss(tok) ?? tokenRomanization(tok, romanization);
+  }
+
+  function tokenIsFiller(sentenceIdx: number, tokenIdx: number): boolean {
+    const sent = sentences[sentenceIdx];
+    if (!sent) return false;
+    return alignmentForToken(sent.alignments, tokenIdx)?.is_filler ?? false;
+  }
+
+  const playSentence = useCallback(
+    (sentenceIdx: number, indices: number[]) => {
+      if (!tokens) return;
+      const chinese = chineseForIndices(tokens, indices, displayHanzi);
+      if (!chinese.trim()) return;
+      setPlayingSentence(sentenceIdx);
+      playAudio(chinese);
+      window.setTimeout(() => setPlayingSentence(null), 4000);
+    },
+    [tokens, displayHanzi, playAudio],
+  );
+
+  function renderToken(tok: Token, i: number, sentenceIdx: number) {
+    if (!tok.is_hanzi) {
+      if (tok.token === "\n") return <br key={i} />;
+      return <span key={i}>{tok.token}</span>;
+    }
+    const active = selected?.word === tok.token;
+    const displayed = displayHanzi(tok.token);
+    const py = showPinyin ? tokenRomanization(tok, romanization) : "";
+    const gloss = tokenGloss(sentenceIdx, i, tok);
+    const isFiller = tokenIsFiller(sentenceIdx, i);
+    const linked = isTokenHighlighted(
+      sentences[sentenceIdx]?.alignments ?? [],
+      i,
+      activeLink,
+      sentenceIdx,
+    );
+
+    const onMouseEnter = () => setActiveLink({ sentenceIdx, tokenIndex: i });
+
+    const sharedProps = {
+      "data-active": active ? "true" : undefined,
+      "data-link-hover": linked ? "true" : undefined,
+      "data-filler": isFiller ? "true" : undefined,
+      title: gloss,
+      onClick: () => onTokenClick(tok),
+      onMouseEnter,
+    };
+
+    if (showPinyin && py) {
+      return (
+        <ruby key={i} className="hanzi-token" {...sharedProps}>
+          {displayed}
+          <rt className="text-[0.55em] text-ink/60">{py}</rt>
+        </ruby>
+      );
+    }
+
+    return (
+      <span key={i} className="hanzi-token" {...sharedProps}>
+        {displayed}
+      </span>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Smart Reader"
-        subtitle="Paste any Chinese text."
+        subtitle="Paste Chinese text — segmentation, translation, hover links, and listen sentence-by-sentence."
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_400px]">
@@ -114,7 +219,7 @@ export function Reader({ initialText }: { initialText?: string }) {
             />
             <div className="flex flex-wrap items-center gap-2">
               <button className="btn-primary" onClick={onRead} disabled={loading || !text.trim()}>
-                {loading ? "Reading…" : "Read"}
+                {loading ? "Reading & translating…" : "Read"}
               </button>
               <button className="btn-outline" onClick={() => setText(SAMPLE)} type="button">
                 Load sample
@@ -122,7 +227,12 @@ export function Reader({ initialText }: { initialText?: string }) {
               <button
                 className="btn-ghost"
                 type="button"
-                onClick={() => { setText(""); setSegmented(null); setSelected(null); }}
+                onClick={() => {
+                  setText("");
+                  setReadResult(null);
+                  setSelected(null);
+                  setError(null);
+                }}
               >
                 Clear
               </button>
@@ -130,10 +240,9 @@ export function Reader({ initialText }: { initialText?: string }) {
             </div>
           </div>
 
-          {segmented && (
+          {tokens && (
             <>
-              {/* Display-mode toggles */}
-              <div className="flex items-center gap-3 text-sm">
+              <div className="flex flex-wrap items-center gap-4 text-sm">
                 <label className="flex cursor-pointer items-center gap-1.5">
                   <input
                     type="checkbox"
@@ -143,52 +252,83 @@ export function Reader({ initialText }: { initialText?: string }) {
                   />
                   Show {preferences.audio === "cantonese" ? "jyutping" : "pinyin"}
                 </label>
+                <label className="flex cursor-pointer items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={showTranslation}
+                    onChange={(e) => setShowTranslation(e.target.checked)}
+                    className="h-4 w-4 accent-accent"
+                  />
+                  Show English translation
+                </label>
               </div>
 
-              <div ref={containerRef} className="card hanzi" onMouseUp={onMouseUp}>
-                {segmented.tokens.map((tok, i) => {
-                  if (!tok.is_hanzi) {
-                    if (tok.token === "\n") return <br key={i} />;
-                    return <span key={i}>{tok.token}</span>;
-                  }
-                  const active = selected?.word === tok.token;
-                  const displayed = displayHanzi(tok.token);
-                  const py = showPinyin ? tokenRomanization(tok, romanization) : "";
-
-                  if (showPinyin && py) {
-                    return (
-                      <ruby
-                        key={i}
-                        className="hanzi-token"
-                        data-active={active ? "true" : undefined}
-                        onClick={() => onTokenClick(tok)}
-                      >
-                        {displayed}
-                        <rt className="text-[0.55em] text-ink/60">{py}</rt>
-                      </ruby>
-                    );
-                  }
+              <div
+                ref={containerRef}
+                className="space-y-3"
+                onMouseUp={onMouseUp}
+                onMouseLeave={() => setActiveLink(null)}
+              >
+                {sentenceGroups.map((indices, sentenceIdx) => {
+                  const translation = sentences[sentenceIdx];
+                  const isPlaying = playingSentence === sentenceIdx;
+                  const isActive =
+                    activeLink?.sentenceIdx === sentenceIdx;
 
                   return (
-                    <span
-                      key={i}
-                      className="hanzi-token"
-                      data-active={active ? "true" : undefined}
-                      onClick={() => onTokenClick(tok)}
-                      title={tokenRomanization(tok, romanization)}
+                    <div
+                      key={sentenceIdx}
+                      className="card space-y-2"
+                      data-sentence-playing={isPlaying ? "true" : undefined}
                     >
-                      {displayed}
-                    </span>
+                      <div className="flex items-start gap-2">
+                        <div className="hanzi min-w-0 flex-1 text-base leading-loose">
+                          {indices.map((i) => renderToken(tokens[i], i, sentenceIdx))}
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-outline shrink-0 px-2 py-1 text-sm"
+                          onClick={() => playSentence(sentenceIdx, indices)}
+                          aria-label={`Listen to sentence ${sentenceIdx + 1}`}
+                          title={`Listen (${preferences.audio === "cantonese" ? "Cantonese" : "Mandarin"})`}
+                        >
+                          {isPlaying ? "🔊 …" : "🔊"}
+                        </button>
+                      </div>
+
+                      {isActive && (
+                        <TokenGlossBadge
+                          sentences={sentences}
+                          activeLink={activeLink}
+                        />
+                      )}
+
+                      {showTranslation && translation && (
+                        <TranslationSentence
+                          sent={translation}
+                          sentenceIdx={sentenceIdx}
+                          activeLink={activeLink}
+                          onActivateLink={setActiveLink}
+                        />
+                      )}
+                    </div>
                   );
                 })}
               </div>
+
+              {showTranslation && sentences.length === 0 && (
+                <div className="subtle-card text-sm text-ink/60">
+                  No translation returned. Check that the backend is running with an OpenAI key.
+                </div>
+              )}
             </>
           )}
 
-          {!segmented && (
+          {!tokens && (
             <div className="space-y-4">
               <div className="subtle-card text-sm text-ink/70">
-                Paste any Chinese above and press <b>Read</b>
+                Paste any Chinese above and press <b>Read</b>. Each sentence has a{" "}
+                <b>🔊</b> button to hear it aloud.
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {NEXT_STEPS.map((s) => (

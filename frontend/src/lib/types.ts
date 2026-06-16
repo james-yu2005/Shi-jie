@@ -33,8 +33,10 @@ export type DictLookup = {
 export type ReaderAlignment = {
   token_index: number;
   gloss: string;
-  english_words: string[];
-  english_word_indices: number[];
+  is_filler: boolean;
+  english_phrase: string;
+  english_start: number;
+  english_end: number;
 };
 
 export type ReaderSentenceTranslation = {
