@@ -9,6 +9,7 @@ import { BucketEditor } from "./BucketEditor";
 import { ModeTabs } from "./ModeTabs";
 import { PageHeader } from "./PageHeader";
 import { ReviewMode } from "./ReviewMode";
+import { Hanzi } from "./Hanzi";
 
 type Mode = "manage" | "review" | "sentence";
 
@@ -201,7 +202,7 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
           {error && <div className="text-sm text-red-600">{error}</div>}
           {paragraph && (
             <div className="hanzi rounded-md border border-ink/10 bg-paper p-4 text-base leading-loose">
-              {paragraph}
+              <Hanzi text={paragraph} />
             </div>
           )}
         </div>

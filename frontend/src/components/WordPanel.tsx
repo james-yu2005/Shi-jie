@@ -5,9 +5,8 @@ import { useSession, signIn } from "next-auth/react";
 import type { DictLookup } from "@/lib/types";
 import { apiJson } from "@/lib/api";
 import { useLearningPreferences } from "@/contexts/LearningPreferencesContext";
-import { pickEntryForm } from "@/lib/script";
+import { pinyinFromEntry, jyutpingFromEntry } from "@/lib/word-display";
 import { strokeAnimatedUrl } from "@/lib/strokes";
-import { jyutpingFromEntry, pinyinFromEntry } from "@/lib/word-display";
 import { StrokeButton } from "./StrokeButton";
 import { WordHead } from "./WordHead";
 
@@ -65,7 +64,7 @@ export function WordPanel({ selection, onClose }: Props) {
       await apiJson("/api/bucket", {
         method: "POST",
         json: {
-          hanzi: pickEntryForm(primaryEntry, preferences.script),
+          hanzi: primaryEntry.simplified || primaryEntry.traditional,
           pinyin: pinyinFromEntry(primaryEntry),
           jyutping: jyutpingFromEntry(primaryEntry),
           definition: (primaryEntry.definitions ?? []).join("; "),
@@ -74,7 +73,7 @@ export function WordPanel({ selection, onClose }: Props) {
       });
       setAdded("ok");
     } catch { setAdded("err"); }
-  }, [data, selection, primaryEntry, preferences.script]);
+  }, [data, selection, primaryEntry]);
 
   const onAddToGraph = useCallback(async () => {
     if (!selection || !primaryEntry) return;
@@ -83,7 +82,7 @@ export function WordPanel({ selection, onClose }: Props) {
       await apiJson("/api/kg", {
         method: "POST",
         json: {
-          hanzi: pickEntryForm(primaryEntry, preferences.script),
+          hanzi: primaryEntry.simplified || primaryEntry.traditional,
           pinyin: pinyinFromEntry(primaryEntry),
           jyutping: jyutpingFromEntry(primaryEntry),
           definition: (primaryEntry.definitions ?? []).join("; "),
@@ -92,7 +91,7 @@ export function WordPanel({ selection, onClose }: Props) {
       });
       setGraphed("ok");
     } catch { setGraphed("err"); }
-  }, [selection, primaryEntry, preferences.script]);
+  }, [selection, primaryEntry]);
 
   const examples = useMemo(() =>
     data?.entries.flatMap((e) =>

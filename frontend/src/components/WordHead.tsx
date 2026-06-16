@@ -14,6 +14,7 @@ const hanziSize: Record<Size, string> = {
 
 type Props = {
   hanzi: string;
+  hanziTraditional?: string | null;
   entry?: Pick<
     DictEntry,
     "traditional" | "simplified" | "pinyin" | "pinyin_numbered" | "jyutping"
@@ -52,6 +53,7 @@ export function RomanizationLines({
 
 export function WordHead({
   hanzi,
+  hanziTraditional,
   entry,
   pinyin,
   jyutping,
@@ -60,14 +62,14 @@ export function WordHead({
   showAltScript = true,
   className = "",
 }: Props) {
-  const { preferences, displayHanzi, playAudio } = useLearningPreferences();
+  const { preferences, playAudio } = useLearningPreferences();
   const { primary, alt, pinyin: pin, jyutping: jyut } = resolveWordForms(
     hanzi,
     preferences.script,
     entry,
-    { pinyin, jyutping },
+    { pinyin, jyutping, hanziTraditional },
   );
-  const headword = entry ? primary : displayHanzi(hanzi);
+  const headword = primary;
 
   return (
     <div className={className}>

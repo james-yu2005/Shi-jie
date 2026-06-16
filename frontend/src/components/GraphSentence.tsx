@@ -3,11 +3,12 @@ import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { KgNode } from "@/lib/types";
 import { useLearningPreferences } from "@/contexts/LearningPreferencesContext";
+import { Hanzi } from "./Hanzi";
 
 type Props = { nodes: KgNode[] };
 
 export function GraphSentence({ nodes }: Props) {
-  const { displayHanzi } = useLearningPreferences();
+  const { displayStoredHanzi } = useLearningPreferences();
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(nodes.slice(0, Math.min(8, nodes.length)).map((n) => n.id)),
@@ -57,8 +58,11 @@ export function GraphSentence({ nodes }: Props) {
   }, [paragraph, router]);
 
   const selectedWords = useMemo(
-    () => nodes.filter((n) => selected.has(n.id)).map((n) => n.hanzi),
-    [nodes, selected],
+    () =>
+      nodes
+        .filter((n) => selected.has(n.id))
+        .map((n) => displayStoredHanzi(n.hanzi, n.hanziTraditional)),
+    [nodes, selected, displayStoredHanzi],
   );
 
   if (nodes.length === 0) {
@@ -101,7 +105,9 @@ export function GraphSentence({ nodes }: Props) {
                   : "border-ink/15 bg-white hover:bg-ink/5")
               }
             >
-              <span className="hanzi text-base">{displayHanzi(n.hanzi)}</span>
+              <span className="hanzi text-base">
+                {displayStoredHanzi(n.hanzi, n.hanziTraditional)}
+              </span>
               {n.pinyin && (
                 <span className="ml-1 text-xs text-ink/60">
                   {n.pinyin}
@@ -132,10 +138,10 @@ export function GraphSentence({ nodes }: Props) {
         <div className="space-y-2">
           <div className="label">Generated paragraph</div>
           <div className="hanzi rounded-md border border-ink/10 bg-paper p-4 text-base leading-loose">
-            {paragraph}
+            <Hanzi text={paragraph} />
           </div>
           <div className="text-xs text-ink/60">
-            Words used: {selectedWords.map(displayHanzi).join("、")}
+            Words used: {selectedWords.join("、")}
           </div>
         </div>
       )}

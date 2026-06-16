@@ -30,9 +30,32 @@ export type DictLookup = {
   audio_url: string;
 };
 
+export type ReaderAlignment = {
+  token_index: number;
+  gloss: string;
+  english_words: string[];
+  english_word_indices: number[];
+};
+
+export type ReaderSentenceTranslation = {
+  token_indices: number[];
+  english: string;
+  alignments: ReaderAlignment[];
+};
+
+export type ReaderReadResult = {
+  tokens: Array<{
+    token: string;
+    is_hanzi: boolean;
+    entries: DictEntry[];
+  }>;
+  sentences: ReaderSentenceTranslation[];
+};
+
 export type Flashcard = {
   id: string;
   hanzi: string;
+  hanziTraditional?: string;
   pinyin: string;
   jyutping?: string;
   definition: string;
@@ -85,6 +108,7 @@ export type KgEdgeType = "meaning" | "character";
 export type KgNode = {
   id: string;
   hanzi: string;
+  hanziTraditional?: string;
   pinyin: string;
   jyutping?: string;
   definition: string;

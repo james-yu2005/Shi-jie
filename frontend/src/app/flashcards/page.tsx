@@ -17,6 +17,7 @@ export default async function FlashcardsPage() {
       initialCards={cards.map((c) => ({
         id: c.id,
         hanzi: c.hanzi,
+        hanziTraditional: c.hanziTraditional,
         pinyin: c.pinyin,
         jyutping: c.jyutping,
         definition: c.definition,

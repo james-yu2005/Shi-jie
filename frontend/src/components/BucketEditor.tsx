@@ -109,6 +109,7 @@ function CardRow({
     <div className="grid grid-cols-1 items-start gap-3 p-3 md:grid-cols-[minmax(140px,180px)_1fr_auto]">
       <WordHead
         hanzi={card.hanzi}
+        hanziTraditional={card.hanziTraditional}
         pinyin={card.pinyin}
         jyutping={card.jyutping}
         size="sm"

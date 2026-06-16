@@ -33,7 +33,7 @@ export function GraphCanvas({
   selectedId,
   onSelect,
 }: Props) {
-  const { displayHanzi } = useLearningPreferences();
+  const { displayStoredHanzi } = useLearningPreferences();
   const hanziFont =
     '"Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
   const positionsRef = useRef<Record<string, Pos>>({});
@@ -418,7 +418,7 @@ export function GraphCanvas({
                   fontFamily={hanziFont}
                   fill="#1a1a1a"
                 >
-                  {displayHanzi(n.hanzi)}
+                  {displayStoredHanzi(n.hanzi, n.hanziTraditional)}
                 </text>
                 {n.pinyin && (
                   <text

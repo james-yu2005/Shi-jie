@@ -65,11 +65,12 @@ model VerificationToken {
 // ----- App models -----
 // One flashcard = one saved word/phrase for a user.
 model Flashcard {
-  id           String    @id @default(cuid())
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  hanzi        String
-  pinyin       String
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hanzi            String
+  hanziTraditional String    @default("")
+  pinyin           String
   jyutping     String   @default("")
   definition   String
   notes        String?
@@ -112,11 +113,12 @@ model DailyGame {
 // semantic tags (meaning). They're stored explicitly so the UI can
 // show them quickly and the quiz mode can pick connected pairs.
 model KgNode {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  hanzi        String
-  pinyin       String
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hanzi            String
+  hanziTraditional String   @default("")
+  pinyin           String
   jyutping     String   @default("")
   definition   String
   radicals     Json     @default("[]") // string[]: shared subcomponents

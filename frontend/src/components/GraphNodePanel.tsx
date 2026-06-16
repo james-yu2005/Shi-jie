@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { DictLookup, KgEdge, KgNode, KgSuggestion } from "@/lib/types";
 import { WordHead } from "./WordHead";
+import { Hanzi } from "./Hanzi";
 
 type Props = {
   node: KgNode | null;
@@ -104,6 +105,7 @@ export function GraphNodePanel({
       <div className="flex items-start justify-between gap-3">
         <WordHead
           hanzi={node.hanzi}
+          hanziTraditional={node.hanziTraditional}
           entry={primaryEntry}
           pinyin={node.pinyin}
           jyutping={node.jyutping}
@@ -144,7 +146,7 @@ export function GraphNodePanel({
           <ul className="space-y-1 text-sm">
             {node.components.map((c, i) => (
               <li key={i} className="hanzi text-sm">
-                {c}
+                <Hanzi text={c} />
               </li>
             ))}
           </ul>
@@ -265,6 +267,7 @@ function NeighborList({
             >
               <WordHead
                 hanzi={other.hanzi}
+                hanziTraditional={other.hanziTraditional}
                 pinyin={other.pinyin}
                 jyutping={other.jyutping}
                 size="sm"

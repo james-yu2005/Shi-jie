@@ -30,13 +30,23 @@ function daysFromNow(days: number): Date {
 }
 
 function cardToClient(c: {
-  id: string; hanzi: string; pinyin: string; jyutping: string; definition: string;
-  notes: string | null; dueAt: Date | null; interval: number; ease: number;
-  reviewCount: number; createdAt: Date;
+  id: string;
+  hanzi: string;
+  hanziTraditional: string;
+  pinyin: string;
+  jyutping: string;
+  definition: string;
+  notes: string | null;
+  dueAt: Date | null;
+  interval: number;
+  ease: number;
+  reviewCount: number;
+  createdAt: Date;
 }): Flashcard {
   return {
     id: c.id,
     hanzi: c.hanzi,
+    hanziTraditional: c.hanziTraditional,
     pinyin: c.pinyin,
     jyutping: c.jyutping,
     definition: c.definition,

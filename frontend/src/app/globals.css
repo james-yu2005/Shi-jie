@@ -124,7 +124,33 @@ body {
 }
 
 /* simple stroke animation: outlined glyph rotates through stroke colors */
-@keyframes strokeFill {
+.read-link-highlight {
+  background: rgba(44, 125, 160, 0.28);
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px rgba(44, 125, 160, 0.15);
+}
+
+.hanzi-token[data-link-hover="true"] {
+  background: rgba(44, 125, 160, 0.22);
+  border-bottom-color: var(--accent2);
+}
+
+.english-token {
+  border-radius: 3px;
+  padding: 0 1px;
+  transition: background 100ms ease, box-shadow 100ms ease;
+  cursor: default;
+}
+
+.english-token[data-link-hover="true"] {
+  background: rgba(44, 125, 160, 0.28);
+  box-shadow: 0 0 0 2px rgba(44, 125, 160, 0.15);
+}
+
+.reader-gloss {
+  @apply rounded-md border border-accent2/20 bg-accent2/5 px-2 py-1 text-sm text-ink/80;
+}
+
   0% {
     stroke-dashoffset: 1000;
   }

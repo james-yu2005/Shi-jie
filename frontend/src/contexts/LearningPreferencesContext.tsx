@@ -20,6 +20,7 @@ import {
   type RawUserPreferences,
 } from "@/lib/preferences";
 import { pickEntryForm, toPreferredScriptSync } from "@/lib/script";
+import { displayStoredHanzi as storedHanziForScript } from "@/lib/word-display";
 import { apiJson, swrFetcher } from "@/lib/api";
 import type {
   AudioPreference,
@@ -34,6 +35,7 @@ type LearningPreferencesContextValue = {
   setScript: (script: ScriptPreference) => void;
   setAudio: (audio: AudioPreference) => void;
   displayHanzi: (text: string) => string;
+  displayStoredHanzi: (hanzi: string, hanziTraditional?: string | null) => string;
   displayEntry: (entry: Pick<DictEntry, "traditional" | "simplified">) => string;
   romanization: (entry: DictEntry) => string;
   playAudio: (text: string) => void;
@@ -133,6 +135,12 @@ export function LearningPreferencesProvider({ children }: { children: ReactNode 
     [preferences.script],
   );
 
+  const displayStoredHanzi = useCallback(
+    (hanzi: string, hanziTraditional?: string | null) =>
+      storedHanziForScript(hanzi, preferences.script, hanziTraditional),
+    [preferences.script],
+  );
+
   const displayEntry = useCallback(
     (entry: Pick<DictEntry, "traditional" | "simplified">) =>
       pickEntryForm(entry, preferences.script),
@@ -163,6 +171,7 @@ export function LearningPreferencesProvider({ children }: { children: ReactNode 
       setScript,
       setAudio,
       displayHanzi,
+      displayStoredHanzi,
       displayEntry,
       romanization,
       playAudio,
@@ -174,6 +183,7 @@ export function LearningPreferencesProvider({ children }: { children: ReactNode 
       setScript,
       setAudio,
       displayHanzi,
+      displayStoredHanzi,
       displayEntry,
       romanization,
       playAudio,

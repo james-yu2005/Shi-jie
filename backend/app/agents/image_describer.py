@@ -27,7 +27,7 @@ from langgraph.graph import END, START, StateGraph
 
 from ..llm import safe_json, text_llm, vision_llm
 from .. import dictionary as dct
-from ..locale import script_label, tutor_role
+from ..locale import locale_label, script_label, tutor_role
 
 # ---------- state ----------
 class GameState(TypedDict, total=False):

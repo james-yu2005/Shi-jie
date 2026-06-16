@@ -5,6 +5,7 @@ import type { KgEdge, KgEdgeType, KgNode } from "./types";
 export function nodeToClient(n: {
   id: string;
   hanzi: string;
+  hanziTraditional?: string;
   pinyin: string;
   jyutping?: string;
   definition: string;
@@ -17,6 +18,7 @@ export function nodeToClient(n: {
   return {
     id: n.id,
     hanzi: n.hanzi,
+    hanziTraditional: n.hanziTraditional ?? "",
     pinyin: n.pinyin,
     jyutping: n.jyutping ?? "",
     definition: n.definition,

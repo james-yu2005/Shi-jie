@@ -1,10 +1,12 @@
 "use client";
 import { useMemo } from "react";
 import type { KgEdge, KgNode } from "@/lib/types";
+import { useLearningPreferences } from "@/contexts/LearningPreferencesContext";
 
 type Props = { nodes: KgNode[]; edges: KgEdge[] };
 
 export function GraphStats({ nodes, edges }: Props) {
+  const { displayStoredHanzi } = useLearningPreferences();
   const stats = useMemo(() => {
     const meaningEdges = edges.filter((e) => e.type === "meaning").length;
     const characterEdges = edges.filter((e) => e.type === "character").length;
@@ -60,7 +62,11 @@ export function GraphStats({ nodes, edges }: Props) {
       />
       <Stat
         label="Most connected"
-        value={stats.hub ? stats.hub.node.hanzi : "—"}
+        value={
+          stats.hub
+            ? displayStoredHanzi(stats.hub.node.hanzi, stats.hub.node.hanziTraditional)
+            : "—"
+        }
         sub={stats.hub ? `${stats.hub.deg} edges` : undefined}
         hanzi={Boolean(stats.hub)}
       />
@@ -74,7 +80,7 @@ export function GraphStats({ nodes, edges }: Props) {
                   key={r}
                   className=" rounded-md border border-ink/15 bg-paper px-2 py-0.5 text-base"
                 >
-                  {r}
+                  {displayStoredHanzi(r)}
                   <span className="ml-1 text-xs text-ink/60">×{c}</span>
                 </span>
               ))}

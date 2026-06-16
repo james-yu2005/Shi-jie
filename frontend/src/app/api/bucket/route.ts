@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
+import { resolveHanziForms } from "@/lib/hanzi-forms";
 
 const PostBody = z.object({
   hanzi: z.string().min(1),
@@ -25,10 +26,20 @@ export const POST = withAuth(async (user, req) => {
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
   const data = parsed.data;
+  const forms = await resolveHanziForms(data.hanzi);
   const card = await prisma.flashcard.upsert({
-    where: { userId_hanzi: { userId: user.id, hanzi: data.hanzi } },
-    create: { ...data, userId: user.id },
+    where: { userId_hanzi: { userId: user.id, hanzi: forms.simplified } },
+    create: {
+      hanzi: forms.simplified,
+      hanziTraditional: forms.traditional,
+      pinyin: data.pinyin,
+      jyutping: data.jyutping,
+      definition: data.definition,
+      notes: data.notes ?? null,
+      userId: user.id,
+    },
     update: {
+      hanziTraditional: forms.traditional,
       pinyin: data.pinyin,
       jyutping: data.jyutping,
       definition: data.definition,

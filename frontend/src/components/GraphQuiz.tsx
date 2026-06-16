@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { KgEdge, KgNode } from "@/lib/types";
 import { apiJson } from "@/lib/api";
+import { useLearningPreferences } from "@/contexts/LearningPreferencesContext";
 
 type Props = {
   nodes: KgNode[];
@@ -225,9 +226,12 @@ export function GraphQuiz({ nodes, edges }: Props) {
 }
 
 function NodeBadge({ node }: { node: KgNode }) {
+  const { displayStoredHanzi } = useLearningPreferences();
   return (
     <div className="flex flex-col items-center">
-      <div className="hanzi text-3xl font-bold">{node.hanzi}</div>
+      <div className="hanzi text-3xl font-bold">
+        {displayStoredHanzi(node.hanzi, node.hanziTraditional)}
+      </div>
       <div className="text-xs text-ink/70">{node.pinyin}</div>
       <div className="text-xs text-ink/50">{node.definition}</div>
     </div>

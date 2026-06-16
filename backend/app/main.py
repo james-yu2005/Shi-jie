@@ -5,6 +5,7 @@ Exposes:
     POST /dictionary/segment   { text }              -> tokens with entries
     GET  /dictionary/lookup    ?word=                -> entries + stroke + audio
     POST /ai/explain           { word, context }     -> markdown explanation
+    POST /ai/translate         { text }              -> segmented + aligned English
     POST /ai/paragraph         { words: [..] }       -> chinese paragraph
     POST /daily/grade          { ... }               -> LangGraph image agent
     POST /kg/analyze           { hanzi }             -> radicals + tags + pinyin
@@ -35,6 +36,7 @@ from .agents import (
     image_describer,
     kg_analyzer,
     paragraph_generator,
+    text_translator,
     word_explainer,
 )
 
@@ -170,6 +172,15 @@ def ai_explain(req: ExplainRequest) -> dict[str, str]:
         req.locale,
     )
     return {"markdown": text}
+
+
+class TranslateRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=20_000)
+
+
+@app.post("/ai/translate")
+def ai_translate(req: TranslateRequest) -> dict[str, Any]:
+    return run_agent("translate", text_translator.translate, req.text)
 
 
 class ParagraphRequest(LearningPrefs):

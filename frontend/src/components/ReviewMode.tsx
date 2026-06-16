@@ -11,7 +11,7 @@ type Quality = 1 | 3 | 5;
 type Props = { onDone?: () => void };
 
 export function ReviewMode({ onDone }: Props) {
-  const { displayHanzi } = useLearningPreferences();
+  const { displayStoredHanzi } = useLearningPreferences();
   const { data, mutate, isLoading } = useSWR<{ cards: Flashcard[] }>(
     "/api/bucket/review",
     swrFetcher,
@@ -101,7 +101,9 @@ export function ReviewMode({ onDone }: Props) {
         className="card flex min-h-[220px] cursor-pointer flex-col items-center justify-center space-y-3 select-none"
         onClick={() => !flipped && setFlipped(true)}
       >
-        <div className="hanzi text-5xl font-bold">{displayHanzi(card.hanzi)}</div>
+        <div className="hanzi text-5xl font-bold">
+          {displayStoredHanzi(card.hanzi, card.hanziTraditional)}
+        </div>
 
         {!flipped && (
           <p className="text-sm text-ink/50">tap to reveal</p>

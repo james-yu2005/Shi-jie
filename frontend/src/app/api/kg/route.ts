@@ -3,6 +3,7 @@ import { z } from "zod";
 import { backendFetch } from "@/lib/backend";
 import { withAuth } from "@/lib/auth";
 import { asStringArray, deriveEdges, edgeToClient, nodeToClient } from "@/lib/kg";
+import { resolveHanziForms } from "@/lib/hanzi-forms";
 import { prisma } from "@/lib/prisma";
 
 const PostBody = z.object({
@@ -42,10 +43,11 @@ export const POST = withAuth(async (user, req) => {
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
   const { hanzi, pinyin, jyutping, definition, notes } = parsed.data;
+  const forms = await resolveHanziForms(hanzi);
 
   // If the node already exists, return it (idempotent add-to-graph).
   const existing = await prisma.kgNode.findUnique({
-    where: { userId_hanzi: { userId: user.id, hanzi } },
+    where: { userId_hanzi: { userId: user.id, hanzi: forms.simplified } },
   });
   if (existing) {
     const edges = await prisma.kgEdge.findMany({
@@ -83,7 +85,7 @@ export const POST = withAuth(async (user, req) => {
   try {
     const fromAi = await backendFetch<AnalyzeResponse>("/kg/analyze", {
       method: "POST",
-      json: { hanzi, existing_tags: existingTags },
+      json: { hanzi: forms.simplified, existing_tags: existingTags },
     });
     analyzed = {
       pinyin: pinyin || fromAi.pinyin,
@@ -105,7 +107,8 @@ export const POST = withAuth(async (user, req) => {
   const created = await prisma.kgNode.create({
     data: {
       userId: user.id,
-      hanzi,
+      hanzi: forms.simplified,
+      hanziTraditional: forms.traditional,
       pinyin: analyzed.pinyin,
       jyutping: jyutping ?? "",
       definition: analyzed.definition,

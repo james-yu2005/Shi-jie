@@ -7,6 +7,7 @@ import { DAILY_EXAMPLE } from "@/lib/daily";
 import { HeatmapCalendar } from "./HeatmapCalendar";
 import { PageHeader } from "./PageHeader";
 import { RomanizationLines } from "./WordHead";
+import { Hanzi } from "./Hanzi";
 import { useLearningPreferences } from "@/contexts/LearningPreferencesContext";
 
 type GameWithMax = DailyGame & { maxAttempts: number };
@@ -291,12 +292,12 @@ function DailyExampleShowcase() {
         <div className="space-y-2 text-sm">
           <div>
             <span className="label">You might write</span>
-            <div className="hanzi mt-1 text-base">{first.prompt}</div>
+            <div className="hanzi mt-1 text-base"><Hanzi text={first.prompt} /></div>
           </div>
           <div>
             <span className="label">Target answer</span>
             <div className="hanzi mt-1 text-base text-green-800">
-              {DAILY_EXAMPLE.targetDesc}
+              <Hanzi text={DAILY_EXAMPLE.targetDesc} />
             </div>
           </div>
         </div>
@@ -346,7 +347,7 @@ const AttemptCard = memo(function AttemptCard({
           </span>
         </div>
       </div>
-      <div className="hanzi text-base">{attempt.prompt}</div>
+      <div className="hanzi text-base"><Hanzi text={attempt.prompt} /></div>
 
       {attempt.grammar_errors.length > 0 && (
         <div className="rounded-md border border-ink/10 bg-paper p-2 text-sm">
@@ -354,8 +355,8 @@ const AttemptCard = memo(function AttemptCard({
           <ul className="space-y-1">
             {attempt.grammar_errors.map((g, i) => (
               <li key={i}>
-                <span className="line-through text-red-600">{g.wrong}</span>{" "}
-                → <span className="font-medium">{g.correct}</span>
+                <span className="line-through text-red-600"><Hanzi text={g.wrong} /></span>{" "}
+                → <span className="font-medium"><Hanzi text={g.correct} /></span>
                 <div className="text-xs text-ink/60">{g.explanation}</div>
               </li>
             ))}
@@ -366,7 +367,12 @@ const AttemptCard = memo(function AttemptCard({
       {attempt.missing_elements.length > 0 && (
         <div className="text-sm">
           <span className="label">You missed</span>{" "}
-          {attempt.missing_elements.join(", ")}
+          {attempt.missing_elements.map((el, i) => (
+            <span key={i}>
+              {i > 0 && ", "}
+              <Hanzi text={el} />
+            </span>
+          ))}
         </div>
       )}
 
@@ -376,7 +382,7 @@ const AttemptCard = memo(function AttemptCard({
           <div className="space-y-2">
             {attempt.vocab_hints.map((vocab, i) => (
               <div key={i} className="rounded bg-white p-2 shadow-sm">
-                <div className="hanzi text-lg font-semibold">{vocab.hanzi}</div>
+                <div className="hanzi text-lg font-semibold"><Hanzi text={vocab.hanzi} /></div>
                 <RomanizationLines
                   pinyin={vocab.pinyin}
                   jyutping={vocab.jyutping ?? ""}
@@ -399,7 +405,7 @@ const AttemptCard = memo(function AttemptCard({
       {attempt.reveal && (
         <div className="rounded-md border border-ink/10 bg-green-50 p-2">
           <div className="label mb-1 text-green-800">Target description</div>
-          <div className="hanzi text-base">{attempt.reveal}</div>
+          <div className="hanzi text-base"><Hanzi text={attempt.reveal} /></div>
         </div>
       )}
 
