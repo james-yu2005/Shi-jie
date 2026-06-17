@@ -177,6 +177,13 @@ def is_hanzi(ch: str) -> bool:
     return bool(_HAN_RE.match(ch))
 
 
+TRANSLATE_HANZI_LIMIT = 75
+
+
+def count_hanzi(text: str) -> int:
+    return sum(1 for c in text if is_hanzi(c))
+
+
 def segment(text: str, max_word_len: int = 6) -> list[str]:
     """Greedy longest-match segmentation against the loaded dictionary."""
     table, _ = _load()

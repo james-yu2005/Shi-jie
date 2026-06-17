@@ -180,6 +180,13 @@ class TranslateRequest(BaseModel):
 
 @app.post("/ai/translate")
 def ai_translate(req: TranslateRequest) -> dict[str, Any]:
+    hanzi_count = dct.count_hanzi(req.text)
+    if hanzi_count > dct.TRANSLATE_HANZI_LIMIT:
+        raise HTTPException(
+            400,
+            f"Text has {hanzi_count} Chinese characters; "
+            f"maximum is {dct.TRANSLATE_HANZI_LIMIT}",
+        )
     return run_agent("translate", text_translator.translate, req.text)
 
 

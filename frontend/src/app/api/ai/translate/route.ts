@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { backendFetch } from "@/lib/backend";
+import { countHanzi, TRANSLATE_HANZI_LIMIT } from "@/lib/chinese";
 
-const Body = z.object({ text: z.string().min(1).max(20000) });
+const Body = z.object({
+  text: z
+    .string()
+    .min(1)
+    .refine((t) => countHanzi(t) <= TRANSLATE_HANZI_LIMIT, {
+      message: `Maximum ${TRANSLATE_HANZI_LIMIT} Chinese characters`,
+    }),
+});
 
 export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json());
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
+    const message = parsed.error.issues[0]?.message ?? "Invalid request";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
   try {
     const data = await backendFetch("/ai/translate", {

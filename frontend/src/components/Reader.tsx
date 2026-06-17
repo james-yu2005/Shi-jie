@@ -12,8 +12,10 @@ import {
   isTokenHighlighted,
   type ActiveLink,
 } from "@/lib/reader-alignment";
+import { countHanzi, TRANSLATE_HANZI_LIMIT } from "@/lib/chinese";
 import { resolveWordPanelGloss } from "@/lib/word-gloss";
 import { PageHeader } from "./PageHeader";
+import { SiteGuide } from "./SiteGuide";
 import { WordPanel } from "./WordPanel";
 import { TokenGlossBadge, TranslationSentence } from "./ReaderTranslation";
 
@@ -67,6 +69,9 @@ export function Reader({ initialText }: { initialText?: string }) {
     return sentenceGroupsFromResult(tokens, sentences);
   }, [tokens, sentences]);
 
+  const hanziCount = useMemo(() => countHanzi(text), [text]);
+  const overLimit = hanziCount > TRANSLATE_HANZI_LIMIT;
+
   useEffect(() => {
     if (initialText && initialText !== text) setText(initialText);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,6 +80,12 @@ export function Reader({ initialText }: { initialText?: string }) {
   const onRead = useCallback(async () => {
     setError(null);
     if (!text.trim()) return;
+    if (overLimit) {
+      setError(
+        `Keep it to ${TRANSLATE_HANZI_LIMIT} Chinese characters or fewer (you have ${hanziCount}).`,
+      );
+      return;
+    }
     setLoading(true);
     setActiveLink(null);
     setPlayingSentence(null);
@@ -85,6 +96,11 @@ export function Reader({ initialText }: { initialText?: string }) {
         body: JSON.stringify({ text }),
       });
       if (!res.ok) {
+        if (res.status === 400) {
+          const body = (await res.json().catch(() => null)) as { error?: string } | null;
+          setError(body?.error ?? `Maximum ${TRANSLATE_HANZI_LIMIT} Chinese characters`);
+          return;
+        }
         const fallback = await fetch("/api/dictionary/segment", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -102,7 +118,7 @@ export function Reader({ initialText }: { initialText?: string }) {
     } finally {
       setLoading(false);
     }
-  }, [text]);
+  }, [text, hanziCount, overLimit]);
 
   const sentenceTexts = useMemo(() => {
     if (!tokens) return [] as string[];
@@ -206,15 +222,24 @@ export function Reader({ initialText }: { initialText?: string }) {
 
   return (
     <div className="space-y-6">
+      <SiteGuide />
+
       <PageHeader
         title="Smart Reader"
-        subtitle="Paste Chinese text — segmentation, translation, hover links, and listen sentence-by-sentence."
+        subtitle={`Paste up to ${TRANSLATE_HANZI_LIMIT} Chinese characters — segmentation, translation, hover links, and listen sentence-by-sentence.`}
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_400px]">
         <div className="space-y-4">
           <div className="card space-y-3">
-            <label className="label block">Paste Chinese text</label>
+            <div className="flex items-center justify-between gap-2">
+              <label className="label">Paste Chinese text</label>
+              <span
+                className={`text-xs tabular-nums ${overLimit ? "font-medium text-red-600" : "text-ink/50"}`}
+              >
+                {hanziCount} / {TRANSLATE_HANZI_LIMIT}
+              </span>
+            </div>
             <textarea
               className="textarea hanzi min-h-[140px] text-base"
               placeholder="把中文粘贴在这里…"
@@ -222,7 +247,11 @@ export function Reader({ initialText }: { initialText?: string }) {
               onChange={(e) => setText(e.target.value)}
             />
             <div className="flex flex-wrap items-center gap-2">
-              <button className="btn-primary" onClick={onRead} disabled={loading || !text.trim()}>
+              <button
+                className="btn-primary"
+                onClick={onRead}
+                disabled={loading || !text.trim() || overLimit}
+              >
                 {loading ? "Reading & translating…" : "Read"}
               </button>
               <button className="btn-outline" onClick={() => setText(SAMPLE)} type="button">
@@ -332,7 +361,7 @@ export function Reader({ initialText }: { initialText?: string }) {
           {!tokens && (
             <div className="space-y-4">
               <div className="subtle-card text-sm text-ink/70">
-                Paste any Chinese above and press <b>Read</b>. Each sentence has a{" "}
+                Paste up to {TRANSLATE_HANZI_LIMIT} Chinese characters and press <b>Read</b>. Each sentence has a{" "}
                 <b>🔊</b> button to hear it aloud.
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
