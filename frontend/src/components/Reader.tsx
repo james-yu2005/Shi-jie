@@ -12,6 +12,7 @@ import {
   isTokenHighlighted,
   type ActiveLink,
 } from "@/lib/reader-alignment";
+import { resolveWordPanelGloss } from "@/lib/word-gloss";
 import { PageHeader } from "./PageHeader";
 import { WordPanel } from "./WordPanel";
 import { TokenGlossBadge, TranslationSentence } from "./ReaderTranslation";
@@ -21,8 +22,8 @@ type Token = ReaderReadResult["tokens"][number];
 const HAN = /[\u3400-\u9fff\uf900-\ufaff]/;
 
 const SAMPLE = `今天天气真好，所以老师带学生去公园看花。
-我最近在学习中文，每天都会读一些短文，遇到不认识的字就查一下。
-学习语言是一件需要耐心的事，但是非常有意思。`;
+我最近在学习中文，每天会读一些短文。
+学习语言非常有意思。`;
 
 const NEXT_STEPS = [
   { href: "/flashcards", title: "Flashcards", body: "Save words you didn't know and drill yourself." },
@@ -133,7 +134,10 @@ export function Reader({ initialText }: { initialText?: string }) {
     const sent = sentences[sentenceIdx];
     if (sent) {
       const a = alignmentForToken(sent.alignments, tokenIdx);
-      if (a?.gloss) return a.gloss;
+      if (a?.gloss) {
+        if (a.is_filler || tok.entries.length === 0) return a.gloss;
+        return resolveWordPanelGloss(tok, a.gloss);
+      }
     }
     return dictGloss(tok) ?? tokenRomanization(tok, romanization);
   }
@@ -299,6 +303,7 @@ export function Reader({ initialText }: { initialText?: string }) {
                       {isActive && (
                         <TokenGlossBadge
                           sentences={sentences}
+                          tokens={tokens}
                           activeLink={activeLink}
                         />
                       )}

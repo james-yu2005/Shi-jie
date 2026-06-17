@@ -1,12 +1,15 @@
 "use client";
 
-import type { ReaderSentenceTranslation } from "@/lib/types";
+import type { ReaderReadResult, ReaderSentenceTranslation } from "@/lib/types";
 import {
   alignmentForToken,
   buildEnglishSegments,
   isSegmentHighlighted,
   type ActiveLink,
 } from "@/lib/reader-alignment";
+import { resolveWordPanelGloss } from "@/lib/word-gloss";
+
+type Token = ReaderReadResult["tokens"][number];
 
 type SentenceEnglishProps = {
   sent: ReaderSentenceTranslation;
@@ -54,11 +57,12 @@ export function TranslationSentence({
 
 type GlossBarProps = {
   sentences: ReaderSentenceTranslation[];
+  tokens: Token[];
   activeLink: ActiveLink | null;
 };
 
 /** Badge shown at the bottom of the hovered token — gloss for all tokens, grammar label for fillers. */
-export function TokenGlossBadge({ sentences, activeLink }: GlossBarProps) {
+export function TokenGlossBadge({ sentences, tokens, activeLink }: GlossBarProps) {
   if (!activeLink) return null;
 
   const sent = sentences[activeLink.sentenceIdx];
@@ -67,8 +71,12 @@ export function TokenGlossBadge({ sentences, activeLink }: GlossBarProps) {
   const alignment = alignmentForToken(sent.alignments, activeLink.tokenIndex);
   if (!alignment) return null;
 
+  const tok = tokens[activeLink.tokenIndex];
   const isFiller = alignment.is_filler;
-  const gloss = alignment.gloss;
+  const gloss =
+    isFiller || !tok?.entries.length
+      ? alignment.gloss
+      : resolveWordPanelGloss(tok, alignment.gloss);
   const phrase = alignment.english_phrase;
 
   return (

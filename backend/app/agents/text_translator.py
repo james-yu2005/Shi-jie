@@ -67,11 +67,14 @@ _FILLER_GLOSSES = {
 
 def _translate_system() -> str:
     return (
-        "You are a professional Chinese-to-English translator. "
-        "Translate each Chinese sentence into ONE fluent, natural English sentence — "
-        "the way a native English speaker would say it. "
-        "Do NOT produce word-by-word glosses. Do NOT list individual word meanings.\n\n"
-        'Respond with STRICT JSON: {"sentences": [{"english": "<natural English translation>"}]}'
+        "You are translating Chinese for a language learning app where each word will later "
+        "be linked to some part of your English translation.\n\n"
+        "Each sentence includes chinese, tokens (fixed segmentation), and glossary "
+        "[{token, candidates}] with dictionary senses.\n\n"
+        "Write ONE fluent English sentence per chinese sentence. Natural paraphrases are fine "
+        "(e.g. glossary \"car\" → English \"vehicle\") — use whatever reads naturally, as long as "
+        "each content token's meaning is expressed by a verbatim English word or phrase in your output.\n\n"
+        'Respond with STRICT JSON: {"sentences": [{"english": "<English translation>"}]}'
     )
 
 
@@ -80,21 +83,28 @@ def _align_system() -> str:
         "You are aligning Chinese tokens to an already-written English translation for a language learning app.\n\n"
         "Each sentence has:\n"
         "  - chinese: the full Chinese sentence\n"
-        "  - tokens: the segmented Chinese words in order\n"
-        "  - glossary: [{token, gloss}] — the dictionary meaning of each token\n"
-        "  - english: the complete natural English translation (already final, do not change it)\n\n"
+        "  - tokens: segmented Chinese words (fixed order — do not re-segment)\n"
+        "  - glossary: [{token, candidates}] — dictionary sense options per token\n"
+        "  - english: the complete English translation (already final — do not change it)\n\n"
         "For each token in `tokens`, return one alignment object:\n"
         "  - local: 0-based index into the tokens list\n"
-        "  - english_phrase: EXACT verbatim substring from `english` (copy characters exactly, same case/spacing). "
-        "Use '' for grammar particles absorbed into the English.\n"
-        "  - gloss: use the gloss from the glossary for this token (1-4 words)\n"
-        "  - is_filler: true for grammar/structural particles that have no direct English word "
-        "(e.g. 的, 了, 着, 呢, 吗, 把, 被, 地, 得)\n\n"
-        "Rules:\n"
-        "- english_phrase MUST be a verbatim substring of english, or ''.\n"
-        "- Multiple tokens may share the same english_phrase (e.g. subject+verb that contract to one English word).\n"
-        "- Always include every token (same count as tokens list).\n\n"
-        'Respond with STRICT JSON: {"sentences":[{"alignments":[{"local":0,"english_phrase":"...","gloss":"...","is_filler":false}]}]}'
+        "  - english_phrase: substring with similar meaning from `english` (same case/spacing), or '' "
+        "for grammar particles with no surface form\n"
+        "  - gloss: MUST be copied exactly from that token's `candidates` list (a dictionary sense). "
+        "Never invent glosses and never use the English paraphrase as gloss.\n"
+        "  - is_filler: true only for grammar/structural particles with no English surface form\n\n"
+        "Semantic matching (important):\n"
+        "- english_phrase and gloss MAY use different words when the translation paraphrases the dictionary.\n"
+        "  Example: candidates [\"car\"], english contains \"vehicle\" → english_phrase: \"vehicle\", "
+        "gloss: \"car\".\n"
+        "- Another: candidates [\"to meet\"], english has \"encounter\" → english_phrase: \"encounter\", "
+        "gloss: \"to meet\".\n"
+        "- Still link them when the meaning clearly matches, even without shared letters.\n"
+        "- english_phrase MUST be copied verbatim from english; gloss comes from candidates.\n"
+        "- Multiple tokens may share the same english_phrase.\n"
+        "- Always return one alignment per token (same count as tokens list).\n\n"
+        'Respond with STRICT JSON: {"sentences":[{"alignments":[{"local":0,"english_phrase":"...",'
+        '"gloss":"...","is_filler":false}]}]}'
     )
 
 
@@ -127,11 +137,59 @@ def _group_indices(tokens: list[dict[str, Any]]) -> list[list[int]]:
 def _dict_gloss(entries: list[dict]) -> str | None:
     if not entries:
         return None
-    defs = entries[0].get("definitions") or []
+    defs = _wordpanel_definitions(entries)
     if not defs:
         return None
     g = defs[0].split(";")[0].split("(")[0].strip()
     return g[:48] if g else None
+
+
+def _wordpanel_definitions(entries: list[dict]) -> list[str]:
+    """Full CC-CEDICT definition strings (same items shown in WordPanel)."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for entry in entries:
+        for d in entry.get("definitions") or []:
+            d = str(d).strip()
+            if d and d not in seen:
+                seen.add(d)
+                out.append(d)
+    return out
+
+
+def _coerce_dictionary_gloss(
+    gloss: str,
+    entries: list[dict],
+    tok_text: str,
+    english_phrase: str = "",
+) -> str:
+    """Ensure gloss is always a real dictionary sense from WordPanel."""
+    defs = _wordpanel_definitions(entries)
+    if not defs:
+        fb = _FILLER_GLOSSES.get(tok_text)
+        return fb or gloss.strip() or tok_text
+
+    g = gloss.strip()
+    g_lower = g.lower() if g else ""
+
+    if g:
+        for d in defs:
+            if d.lower() == g_lower:
+                return d
+        for d in defs:
+            short = d.split(";")[0].split("(")[0].strip()
+            if short.lower() == g_lower:
+                return d
+        for d in defs:
+            short = d.split(";")[0].split("(")[0].strip().lower()
+            if g_lower in d.lower() or short.startswith(g_lower) or g_lower.startswith(short):
+                return d
+
+    if english_phrase and g_lower == english_phrase.strip().lower():
+        g = ""
+        g_lower = ""
+
+    return defs[0]
 
 
 def _find_phrase(english: str, phrase: str, used: set[tuple[int, int]], start: int = 0) -> tuple[int, int] | None:
@@ -165,6 +223,8 @@ def _resolve_spans(english: str, raw: list[dict[str, Any]]) -> list[dict[str, An
         gloss = str(a.get("gloss") or "").strip()
         is_filler = bool(a.get("is_filler", False))
         token_index = a["token_index"]
+        entries = a.get("entries") or []
+        tok_text = str(a.get("token") or "")
 
         if is_filler or not phrase:
             resolved.append({
@@ -186,7 +246,7 @@ def _resolve_spans(english: str, raw: list[dict[str, Any]]) -> list[dict[str, An
             # phrase not found — treat as filler
             resolved.append({
                 "token_index": token_index,
-                "gloss": gloss or phrase,
+                "gloss": _coerce_dictionary_gloss(gloss, entries, tok_text, phrase),
                 "is_filler": True,
                 "english_phrase": "",
                 "english_start": -1,
@@ -196,11 +256,12 @@ def _resolve_spans(english: str, raw: list[dict[str, Any]]) -> list[dict[str, An
 
         used.add(span)
         cursor = span[1]
+        final_phrase = english[span[0]:span[1]]
         resolved.append({
             "token_index": token_index,
-            "gloss": gloss or english[span[0]:span[1]],
+            "gloss": _coerce_dictionary_gloss(gloss, entries, tok_text, final_phrase),
             "is_filler": False,
-            "english_phrase": english[span[0]:span[1]],
+            "english_phrase": final_phrase,
             "english_start": span[0],
             "english_end": span[1],
         })
@@ -235,10 +296,15 @@ def _build_glossary(ordered_tokens: list[tuple[int, str]], all_tokens: list[dict
     return glossary
 
 
-def _llm_translate(chinese_sentences: list[str]) -> list[str]:
-    """Translate Chinese sentences to natural English — no glossary bias."""
+def _llm_translate(
+    sentences_payload: list[dict[str, Any]],
+    full_chinese: str = "",
+) -> list[str]:
+    """Translate with segment + glossary context for easier later alignment."""
     import json as _json
-    payload = [{"chinese": s} for s in chinese_sentences]
+    payload: dict[str, Any] = {"sentences": sentences_payload}
+    if full_chinese:
+        payload["full_chinese"] = full_chinese
     msgs = [
         SystemMessage(content=_translate_system()),
         HumanMessage(content=_json.dumps(payload, ensure_ascii=False)),
@@ -297,7 +363,7 @@ def translate(text: str) -> dict[str, Any]:
 
     if llm_input:
         try:
-            english_lines = _llm_translate([p["chinese"] for p in llm_input])
+            english_lines = _llm_translate(llm_input, text)
         except Exception:
             english_lines = []
 
@@ -350,17 +416,30 @@ def translate(text: str) -> dict[str, Any]:
             # also treat single-char function words that have a known filler gloss
             if not is_filler and len(tok_text) <= 2 and tok_text in _FILLER_GLOSSES and not phrase:
                 is_filler = True
+            entries = tokens[global_i]["entries"]
             if not gloss:
-                cands = _token_candidates(tokens[global_i]["entries"], tok_text)
+                cands = _token_candidates(entries, tok_text)
                 gloss = (
                     _FILLER_GLOSSES.get(tok_text)
                     or (cands[0] if cands else None)
                     or tok_text
                 )
 
+            gloss = _coerce_dictionary_gloss(
+                gloss,
+                entries,
+                tok_text,
+                "" if is_filler else phrase,
+            ) if not is_filler else (
+                gloss
+                or _FILLER_GLOSSES.get(tok_text)
+                or tok_text
+            )
+
             raw_alignments.append({
                 "token_index": global_i,
                 "token": tok_text,
+                "entries": entries,
                 "english_phrase": "" if is_filler else phrase,
                 "gloss": gloss,
                 "is_filler": is_filler,
