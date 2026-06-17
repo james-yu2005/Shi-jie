@@ -32,6 +32,7 @@ from pydantic import BaseModel, Field
 
 from . import dictionary as dct
 from . import hanzi_data
+from .llm import text_model_name, vision_model_name
 from .agents import (
     image_describer,
     kg_analyzer,
@@ -103,6 +104,10 @@ def health() -> dict[str, Any]:
         "canto_loaded": dct.CEDICT_CANTO_FILE.exists(),
         "hanzi_dictionary_loaded": hanzi_data.is_loaded(),
         "openai_key_present": bool(os.environ.get("OPENAI_API_KEY")),
+        "models": {
+            "text": text_model_name(),
+            "vision": vision_model_name(),
+        },
     }
 
 

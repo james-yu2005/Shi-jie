@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { Providers } from "./providers";
+import { FooterModelInfo } from "@/components/FooterModelInfo";
 import { HeaderNav } from "@/components/HeaderNav";
 import { UserMenu } from "@/components/UserMenu";
 import "./globals.css";
@@ -65,11 +66,14 @@ export default async function RootLayout({
           </main>
 
           <footer className="border-t border-ink/10 bg-paper">
-            <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4 text-xs text-ink/60 sm:px-6">
-              <span>
-                <span className="hanzi serif text-base">世界</span> · a small
-                Chinese reading & study app
-              </span>
+            <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 text-xs sm:px-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 text-ink/60">
+                <span>
+                  <span className="hanzi serif text-base">世界</span> · a small
+                  Chinese reading & study app
+                </span>
+              </div>
+              <FooterModelInfo />
             </div>
           </footer>
         </Providers>

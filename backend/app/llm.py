@@ -18,6 +18,17 @@ from langchain_openai import ChatOpenAI
 _TIMEOUT = float(os.environ.get("OPENAI_TIMEOUT", "30"))
 _MAX_RETRIES = int(os.environ.get("OPENAI_MAX_RETRIES", "2"))
 
+DEFAULT_TEXT_MODEL = "gpt-4o-mini"
+DEFAULT_VISION_MODEL = "gpt-4o-mini"
+
+
+def text_model_name() -> str:
+    return os.environ.get("OPENAI_MODEL", DEFAULT_TEXT_MODEL)
+
+
+def vision_model_name() -> str:
+    return os.environ.get("OPENAI_VISION_MODEL", DEFAULT_VISION_MODEL)
+
 
 @lru_cache(maxsize=16)
 def _client(model: str, temperature: float) -> ChatOpenAI:
@@ -31,12 +42,12 @@ def _client(model: str, temperature: float) -> ChatOpenAI:
 
 def text_llm(temperature: float = 0.0) -> ChatOpenAI:
     """Cached text model (``OPENAI_MODEL``, default ``gpt-4o-mini``)."""
-    return _client(os.environ.get("OPENAI_MODEL", "gpt-4o-mini"), temperature)
+    return _client(text_model_name(), temperature)
 
 
 def vision_llm(temperature: float = 0.2) -> ChatOpenAI:
     """Cached vision model (``OPENAI_VISION_MODEL``, default ``gpt-4o-mini``)."""
-    return _client(os.environ.get("OPENAI_VISION_MODEL", "gpt-4o-mini"), temperature)
+    return _client(vision_model_name(), temperature)
 
 
 def safe_json(raw: Any) -> dict:
