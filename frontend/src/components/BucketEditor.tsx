@@ -57,7 +57,7 @@ export function BucketEditor({ cards, onAdd, onRemove, onUpdate }: Props) {
           value={definition}
           onChange={(e) => setDefinition(e.target.value)}
         />
-        <button className="btn-primary" disabled={adding || !hanzi.trim()}>
+        <button className="btn-primary w-full md:w-auto" disabled={adding || !hanzi.trim()}>
           {adding ? "Adding…" : "+ Add"}
         </button>
       </form>
@@ -139,7 +139,7 @@ function CardRow({
       ) : (
         <div className="text-sm">{card.definition}</div>
       )}
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         {editing ? (
           <>
             <button className="btn-outline" onClick={save}>

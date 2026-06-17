@@ -83,7 +83,7 @@ export function WordHead({
         {showAudio && (
           <button
             type="button"
-            className="btn-outline shrink-0 px-2 py-1 text-sm"
+            className="btn-outline shrink-0"
             onClick={() => playAudio(headword)}
             aria-label="Play pronunciation"
           >

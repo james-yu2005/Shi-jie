@@ -15,6 +15,7 @@ import {
 import { countHanzi, TRANSLATE_HANZI_LIMIT } from "@/lib/chinese";
 import { resolveWordPanelGloss } from "@/lib/word-gloss";
 import { PageHeader } from "./PageHeader";
+import { MobileSheet } from "./MobileSheet";
 import { SiteGuide } from "./SiteGuide";
 import { WordPanel } from "./WordPanel";
 import { TokenGlossBadge, TranslationSentence } from "./ReaderTranslation";
@@ -200,7 +201,10 @@ export function Reader({ initialText }: { initialText?: string }) {
       "data-link-hover": linked ? "true" : undefined,
       "data-filler": isFiller ? "true" : undefined,
       title: gloss,
-      onClick: () => onTokenClick(tok),
+      onClick: () => {
+        onTokenClick(tok);
+        setActiveLink({ sentenceIdx, tokenIndex: i });
+      },
       onMouseEnter,
     };
 
@@ -246,37 +250,39 @@ export function Reader({ initialText }: { initialText?: string }) {
               value={text}
               onChange={(e) => setText(e.target.value)}
             />
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
               <button
-                className="btn-primary"
+                className="btn-primary w-full sm:w-auto"
                 onClick={onRead}
                 disabled={loading || !text.trim() || overLimit}
               >
                 {loading ? "Reading & translating…" : "Read"}
               </button>
-              <button className="btn-outline" onClick={() => setText(SAMPLE)} type="button">
-                Load sample
-              </button>
-              <button
-                className="btn-ghost"
-                type="button"
-                onClick={() => {
-                  setText("");
-                  setReadResult(null);
-                  setSelected(null);
-                  setError(null);
-                }}
-              >
-                Clear
-              </button>
-              {error && <span className="text-sm text-red-600">{error}</span>}
+              <div className="flex flex-wrap gap-2">
+                <button className="btn-outline" onClick={() => setText(SAMPLE)} type="button">
+                  Load sample
+                </button>
+                <button
+                  className="btn-ghost"
+                  type="button"
+                  onClick={() => {
+                    setText("");
+                    setReadResult(null);
+                    setSelected(null);
+                    setError(null);
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+              {error && <span className="w-full text-sm text-red-600">{error}</span>}
             </div>
           </div>
 
           {tokens && (
             <>
-              <div className="flex flex-wrap items-center gap-4 text-sm">
-                <label className="flex cursor-pointer items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
+                <label className="tap-label">
                   <input
                     type="checkbox"
                     checked={showPinyin}
@@ -285,7 +291,7 @@ export function Reader({ initialText }: { initialText?: string }) {
                   />
                   Show {preferences.audio === "cantonese" ? "jyutping" : "pinyin"}
                 </label>
-                <label className="flex cursor-pointer items-center gap-1.5">
+                <label className="tap-label">
                   <input
                     type="checkbox"
                     checked={showTranslation}
@@ -320,7 +326,7 @@ export function Reader({ initialText }: { initialText?: string }) {
                         </div>
                         <button
                           type="button"
-                          className="btn-outline shrink-0 px-2 py-1 text-sm"
+                          className="btn-outline shrink-0"
                           onClick={() => playSentence(sentenceIdx, indices)}
                           aria-label={`Listen to sentence ${sentenceIdx + 1}`}
                           title={`Listen (${preferences.audio === "cantonese" ? "Cantonese" : "Mandarin"})`}
@@ -376,10 +382,22 @@ export function Reader({ initialText }: { initialText?: string }) {
           )}
         </div>
 
-        <div className="lg:sticky lg:top-[88px] lg:self-start">
+        <div className="hidden lg:block lg:sticky lg:top-[var(--header-offset)] lg:self-start">
           <WordPanel selection={selected} onClose={() => setSelected(null)} />
         </div>
       </div>
+
+      <MobileSheet
+        open={Boolean(selected)}
+        onClose={() => setSelected(null)}
+        label="Word panel"
+      >
+        <WordPanel
+          selection={selected}
+          onClose={() => setSelected(null)}
+          className="!border-0 !p-0 !shadow-none"
+        />
+      </MobileSheet>
     </div>
   );
 }

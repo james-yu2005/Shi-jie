@@ -50,7 +50,7 @@ export function PreferenceDropdown<T extends string>({
 
   return (
     <div ref={rootRef} className="relative">
-      <label className="flex items-center gap-1.5 rounded-md border border-ink/10 px-2 py-1">
+      <label className="flex min-h-[44px] items-center gap-1.5 rounded-md border border-ink/10 px-2.5 py-1.5">
         <span className="text-ink/50">{label}</span>
         <button
           type="button"
@@ -78,7 +78,7 @@ export function PreferenceDropdown<T extends string>({
                   type="button"
                   role="option"
                   aria-selected={selected}
-                  className={`w-full rounded-md border px-2.5 py-1.5 text-left text-xs font-medium transition ${
+                  className={`w-full rounded-md border px-2.5 py-2.5 text-left text-xs font-medium transition ${
                     selected
                       ? "border-ink/20 bg-paper text-ink"
                       : "border-transparent text-ink/80 hover:bg-ink/5 hover:text-ink"

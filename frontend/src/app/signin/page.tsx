@@ -39,7 +39,7 @@ export default function SignInPage() {
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => signIn("google", { callbackUrl: "/" })}
-            className="btn-primary text-base"
+            className="btn-primary w-full text-base sm:w-auto"
           >
             <GoogleIcon />
             Continue with Google

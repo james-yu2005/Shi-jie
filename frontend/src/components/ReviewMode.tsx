@@ -122,7 +122,7 @@ export function ReviewMode({ onDone }: Props) {
 
       {/* rating buttons — only visible after flip */}
       {flipped && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <button
             className="btn-outline border-red-200 text-red-600 hover:bg-red-50"
             onClick={() => rate(1)}

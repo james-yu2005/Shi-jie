@@ -13,6 +13,7 @@ import { WordHead } from "./WordHead";
 type Props = {
   selection: { word: string; context: string } | null;
   onClose: () => void;
+  className?: string;
 };
 
 const lookupCache = new Map<string, DictLookup>();
@@ -21,7 +22,7 @@ function cacheKey(word: string, audio: string) {
   return `${word}:${audio}`;
 }
 
-export function WordPanel({ selection, onClose }: Props) {
+export function WordPanel({ selection, onClose, className = "" }: Props) {
   const { status } = useSession();
   const signedIn = status === "authenticated";
   const { preferences, displayHanzi } = useLearningPreferences();
@@ -102,7 +103,7 @@ export function WordPanel({ selection, onClose }: Props) {
 
   if (!selection) {
     return (
-      <div className="card text-sm text-ink/60">
+      <div className={`card text-sm text-ink/60 ${className}`}>
         <div className="label mb-2">Word panel</div>
         Click a word in the smart reader to see its definition, romanization, stroke order,
         and audio. You can also drag-select multi-character phrases.
@@ -111,14 +112,18 @@ export function WordPanel({ selection, onClose }: Props) {
   }
 
   return (
-    <div className="card space-y-4">
+    <div className={`card space-y-4 ${className}`}>
       <div className="flex items-start justify-between gap-3">
         <WordHead
           hanzi={selection.word}
           entry={primaryEntry}
           showAudio={Boolean(data)}
         />
-        <button onClick={onClose} className="text-ink/40 hover:text-ink" aria-label="Close">
+        <button
+          onClick={onClose}
+          className="btn-ghost shrink-0 px-2 text-lg leading-none"
+          aria-label="Close"
+        >
           ✕
         </button>
       </div>
@@ -177,7 +182,7 @@ export function WordPanel({ selection, onClose }: Props) {
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             {signedIn ? (
               <>
                 <button

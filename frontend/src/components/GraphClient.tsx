@@ -7,6 +7,7 @@ import { GraphNodePanel } from "./GraphNodePanel";
 import { GraphQuiz } from "./GraphQuiz";
 import { GraphSentence } from "./GraphSentence";
 import { GraphStats } from "./GraphStats";
+import { MobileSheet } from "./MobileSheet";
 import { ModeTabs } from "./ModeTabs";
 import { PageHeader } from "./PageHeader";
 
@@ -140,16 +141,15 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
           </>
         }
         actions={
-          <>
+          <div className="flex w-full flex-col gap-3 sm:w-auto">
             <button
-              className="btn-outline"
+              className="btn-outline w-full sm:w-auto"
               onClick={rebuild}
               disabled={rebuilding || nodes.length === 0}
               title="Re-analyse every node and recompute all edges"
             >
               {rebuilding ? "Rebuilding…" : "↻ Rebuild edges"}
             </button>
-            <span className="mx-1 hidden h-6 w-px self-center bg-ink/10 sm:inline" />
             <ModeTabs<Mode>
               active={mode}
               onChange={setMode}
@@ -167,7 +167,7 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
                 },
               ]}
             />
-          </>
+          </div>
         }
       />
 
@@ -180,9 +180,9 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
       {mode === "explore" && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_360px]">
           <div className="space-y-3">
-            <div className="card flex flex-wrap items-center gap-3">
+            <div className="card flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <input
-                className="input hanzi max-w-[160px]"
+                className="input hanzi w-full sm:max-w-[160px]"
                 placeholder="+ add word (汉字)"
                 value={addHanzi}
                 onChange={(e) => setAddHanzi(e.target.value)}
@@ -191,14 +191,14 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
                 }}
               />
               <button
-                className="btn-primary"
+                className="btn-primary w-full sm:w-auto"
                 onClick={onAddFromInput}
                 disabled={adding || !addHanzi.trim()}
               >
                 {adding ? "Analyzing…" : "Add to knowledge graph"}
               </button>
 
-              <div className="ml-auto flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
                 <ToggleChip
                   active={filters.character}
                   color="#c0392b"
@@ -230,7 +230,7 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
               onSelect={setSelectedId}
             />
 
-            <div className="flex items-center gap-3 text-xs text-ink/70">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-ink/70">
               <span className="label">Legend</span>
               <span className="flex items-center gap-1">
                 <span
@@ -249,21 +249,42 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
                 />
                 shared meaning
               </span>
-              <span className="ml-auto">
+              <span className="hidden sm:ml-auto sm:inline">
                 Click a node to focus · drag to rearrange
               </span>
             </div>
           </div>
 
-          <GraphNodePanel
-            node={selectedNode}
-            allNodes={nodes}
-            edges={edges}
+          <div className="hidden lg:block">
+            <GraphNodePanel
+              node={selectedNode}
+              allNodes={nodes}
+              edges={edges}
+              onClose={() => setSelectedId(null)}
+              onDelete={deleteNode}
+              onSelect={(id) => setSelectedId(id)}
+              onAddSuggestion={addWord}
+            />
+          </div>
+
+          <MobileSheet
+            open={Boolean(selectedNode)}
             onClose={() => setSelectedId(null)}
-            onDelete={deleteNode}
-            onSelect={(id) => setSelectedId(id)}
-            onAddSuggestion={addWord}
-          />
+            label="Node detail"
+          >
+            {selectedNode && (
+              <GraphNodePanel
+                node={selectedNode}
+                allNodes={nodes}
+                edges={edges}
+                onClose={() => setSelectedId(null)}
+                onDelete={deleteNode}
+                onSelect={(id) => setSelectedId(id)}
+                onAddSuggestion={addWord}
+                className="!border-0 !p-0 !shadow-none"
+              />
+            )}
+          </MobileSheet>
         </div>
       )}
 
@@ -289,7 +310,7 @@ function ToggleChip({
     <button
       onClick={onClick}
       className={
-        "flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition " +
+        "flex min-h-[44px] items-center gap-1 rounded-full border px-3 py-2 text-xs font-medium transition " +
         (active
           ? "border-ink bg-ink text-white"
           : "border-ink/20 bg-white text-ink/70 hover:bg-ink/5")

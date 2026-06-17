@@ -46,6 +46,14 @@ export function TranslationSentence({
             onMouseEnter={() =>
               onActivateLink({ sentenceIdx, tokenIndex: seg.tokenIndex! })
             }
+            onClick={() =>
+              onActivateLink(
+                activeLink?.sentenceIdx === sentenceIdx &&
+                  activeLink?.tokenIndex === seg.tokenIndex
+                  ? null
+                  : { sentenceIdx, tokenIndex: seg.tokenIndex! },
+              )
+            }
           >
             {seg.text}
           </span>
@@ -80,7 +88,7 @@ export function TokenGlossBadge({ sentences, tokens, activeLink }: GlossBarProps
   const phrase = alignment.english_phrase;
 
   return (
-    <div className={`flex items-center gap-2 px-2 py-1 rounded-md text-sm ${
+    <div className={`flex flex-wrap items-center gap-2 px-2 py-1 rounded-md text-sm ${
       isFiller
         ? "bg-amber-50 border border-amber-200 text-amber-800"
         : "bg-accent2/5 border border-accent2/20 text-ink/80"

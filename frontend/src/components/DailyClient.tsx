@@ -15,7 +15,7 @@ type GameWithMax = DailyGame & { maxAttempts: number };
 const DIFFICULTIES: DailyDifficulty[] = ["easy", "medium", "hard"];
 
 const SEGMENT_BTN =
-  "rounded-md px-3 py-1 text-sm capitalize transition hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent data-[active=true]:bg-ink data-[active=true]:text-white data-[active=true]:hover:bg-ink";
+  "min-h-[44px] rounded-md px-3 py-2 text-sm capitalize transition hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent data-[active=true]:bg-ink data-[active=true]:text-white data-[active=true]:hover:bg-ink";
 
 function scoreBadgeClass(attempt: GameAttempt): string {
   const base = "rounded-full px-2 py-0.5 text-xs font-medium";
@@ -152,9 +152,9 @@ export function DailyClient() {
           </span>
         }
         actions={
-          <div className="flex flex-col items-end gap-1">
+          <div className="flex w-full flex-col gap-1 sm:w-auto sm:items-end">
             <span className="label">Difficulty</span>
-            <div className="flex items-center gap-1 rounded-lg border border-ink/15 bg-white p-1">
+            <div className="flex w-full items-center gap-1 rounded-lg border border-ink/15 bg-white p-1 sm:w-auto">
               {DIFFICULTIES.map((d) => (
                 <button
                   key={d}
@@ -162,7 +162,7 @@ export function DailyClient() {
                   onClick={() => chooseDifficulty(d)}
                   disabled={difficultyLocked}
                   data-active={difficulty === d}
-                  className={SEGMENT_BTN}
+                  className={`${SEGMENT_BTN} flex-1 sm:flex-none`}
                 >
                   {d}
                 </button>
@@ -176,7 +176,7 @@ export function DailyClient() {
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr]">
-        <div className="overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm lg:sticky lg:top-20 lg:self-start">
+        <div className="overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm lg:sticky lg:top-[var(--header-offset)] lg:self-start">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={game.imageUrl}

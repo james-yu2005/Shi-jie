@@ -147,14 +147,14 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
           <BucketEditor cards={cards} onAdd={add} onRemove={remove} onUpdate={update} />
           {/* Starter deck — visible when bucket is small */}
           {cards.length < 10 && (
-            <div className="subtle-card flex flex-wrap items-center justify-between gap-3">
+            <div className="subtle-card flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
               <div>
                 <div className="font-medium text-sm">New here?</div>
                 <p className="text-xs text-ink/60">Load 50 essential HSK 1–2 words to get started instantly.</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <button
-                  className="btn-outline"
+                  className="btn-outline w-full sm:w-auto"
                   onClick={loadStarterDeck}
                   disabled={starterLoading}
                 >

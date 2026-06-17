@@ -17,17 +17,19 @@ export function ModeTabs<T extends string>({
   onChange: (id: T) => void;
 }) {
   return (
-    <>
-      {tabs.map((t) => (
-        <button
-          key={t.id}
-          className={active === t.id ? "btn-primary" : "btn-outline"}
-          onClick={() => onChange(t.id)}
-          disabled={t.disabled}
-        >
-          {t.label}
-        </button>
-      ))}
-    </>
+    <div className="-mx-1 flex overflow-x-auto pb-1">
+      <div className="flex min-w-0 gap-2">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            className={`shrink-0 ${active === t.id ? "btn-primary" : "btn-outline"}`}
+            onClick={() => onChange(t.id)}
+            disabled={t.disabled}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

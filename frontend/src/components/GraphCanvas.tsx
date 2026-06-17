@@ -330,7 +330,7 @@ export function GraphCanvas({
 
   if (nodes.length === 0) {
     return (
-      <div className="card flex h-[72vh] items-center justify-center text-center text-sm text-ink/60">
+      <div className="card flex h-[50vh] min-h-[280px] items-center justify-center text-center text-sm text-ink/60 sm:min-h-[400px] lg:h-[72vh] lg:min-h-[520px]">
         <div className="max-w-md space-y-2">
           <div className="hanzi text-3xl">🌱</div>
           <p>
@@ -350,7 +350,7 @@ export function GraphCanvas({
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
-        className="h-[72vh] min-h-[520px] w-full touch-none select-none rounded-xl border border-ink/10 bg-paper"
+        className="h-[50vh] min-h-[280px] w-full touch-none select-none rounded-xl border border-ink/10 bg-paper sm:min-h-[400px] lg:h-[72vh] lg:min-h-[520px]"
         style={{ cursor: panRef.current ? "grabbing" : "grab" }}
         onPointerDown={onSvgPointerDown}
         onPointerMove={onPointerMove}
@@ -437,9 +437,9 @@ export function GraphCanvas({
         </g>
       </svg>
 
-      <div className="absolute right-3 top-3 flex flex-col gap-1 rounded-md border border-ink/10 bg-white/95 p-1 shadow-sm">
+      <div className="absolute right-2 top-2 flex flex-col gap-1 rounded-md border border-ink/10 bg-white/95 p-1 shadow-sm sm:right-3 sm:top-3">
         <button
-          className="grid h-7 w-7 place-items-center rounded text-base text-ink/80 hover:bg-ink/5"
+          className="grid h-11 w-11 place-items-center rounded text-base text-ink/80 hover:bg-ink/5 sm:h-7 sm:w-7"
           onClick={() => zoomBy(1.2)}
           title="Zoom in"
           aria-label="Zoom in"
@@ -447,7 +447,7 @@ export function GraphCanvas({
           +
         </button>
         <button
-          className="grid h-7 w-7 place-items-center rounded text-base text-ink/80 hover:bg-ink/5"
+          className="grid h-11 w-11 place-items-center rounded text-base text-ink/80 hover:bg-ink/5 sm:h-7 sm:w-7"
           onClick={() => zoomBy(1 / 1.2)}
           title="Zoom out"
           aria-label="Zoom out"
@@ -455,7 +455,7 @@ export function GraphCanvas({
           −
         </button>
         <button
-          className="grid h-7 w-7 place-items-center rounded text-xs text-ink/80 hover:bg-ink/5"
+          className="grid h-11 w-11 place-items-center rounded text-xs text-ink/80 hover:bg-ink/5 sm:h-7 sm:w-7"
           onClick={fitToContent}
           title="Fit knowledge graph"
           aria-label="Fit knowledge graph"
@@ -464,7 +464,7 @@ export function GraphCanvas({
         </button>
       </div>
 
-      <div className="pointer-events-none absolute bottom-3 left-3 rounded-md bg-white/85 px-2 py-1 text-[11px] text-ink/60 shadow-sm">
+      <div className="pointer-events-none absolute bottom-2 left-2 hidden rounded-md bg-white/85 px-2 py-1 text-[11px] text-ink/60 shadow-sm sm:block">
         Use +/− to zoom · drag empty space to pan · drag node to move
       </div>
     </div>

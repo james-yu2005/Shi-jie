@@ -13,6 +13,7 @@ type Props = {
   onDelete: (id: string) => void;
   onSelect: (id: string) => void;
   onAddSuggestion: (hanzi: string) => Promise<void>;
+  className?: string;
 };
 
 export function GraphNodePanel({
@@ -23,6 +24,7 @@ export function GraphNodePanel({
   onDelete,
   onSelect,
   onAddSuggestion,
+  className = "",
 }: Props) {
   const [suggestions, setSuggestions] = useState<KgSuggestion[] | null>(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
@@ -79,7 +81,7 @@ export function GraphNodePanel({
 
   if (!node) {
     return (
-      <div className="card text-sm text-ink/60">
+      <div className={`card text-sm text-ink/60 ${className}`}>
         <div className="label mb-2">Node detail</div>
         Click any node in the knowledge graph to see its breakdown, neighbours, and
         suggested new connections.
@@ -101,7 +103,7 @@ export function GraphNodePanel({
   const charNeighbors = neighbors.filter((n) => n.edge.type === "character");
 
   return (
-    <div className="card space-y-4">
+    <div className={`card space-y-4 ${className}`}>
       <div className="flex items-start justify-between gap-3">
         <WordHead
           hanzi={node.hanzi}
@@ -113,7 +115,7 @@ export function GraphNodePanel({
         />
         <button
           onClick={onClose}
-          className="text-ink/40 hover:text-ink"
+          className="btn-ghost shrink-0 px-2 text-lg leading-none"
           aria-label="Close"
         >
           ×
@@ -211,15 +213,15 @@ export function GraphNodePanel({
           {suggestions.map((s) => (
             <div
               key={s.hanzi}
-              className="flex items-start gap-2 rounded-md border border-ink/10 bg-paper p-2"
+              className="flex flex-col gap-2 rounded-md border border-ink/10 bg-paper p-2 sm:flex-row sm:items-start"
             >
               <WordHead hanzi={s.hanzi} pinyin={s.pinyin} size="sm" className="min-w-0 flex-1" />
-              <div className="flex-1 text-sm">
+              <div className="min-w-0 flex-1 text-sm">
                 <div>{s.definition}</div>
                 <div className="text-xs text-ink/60">{s.reason}</div>
               </div>
               <button
-                className="btn-outline shrink-0"
+                className="btn-outline w-full shrink-0 sm:w-auto"
                 disabled={addingHanzi === s.hanzi}
                 onClick={async () => {
                   setAddingHanzi(s.hanzi);
