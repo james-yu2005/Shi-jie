@@ -1,4 +1,4 @@
-// Top 100 HSK 1–2 words for HSK badge lookups; the first 50 are the starter deck.
+// Top 100 HSK 1–2 words for HSK badge lookups; the first 25 are the starter deck.
 // Format: [hanzi, pinyin (tone marks), English definition]
 export type HskWord = { hanzi: string; pinyin: string; definition: string; level: 1 | 2 };
 
@@ -109,7 +109,8 @@ export const HSK_100: HskWord[] = [
 ];
 
 export const AI_SENTENCE_MAX_WORDS = 50;
-export const HSK_STARTER = HSK_100.slice(0, AI_SENTENCE_MAX_WORDS);
+export const STARTER_DECK_SIZE = 25;
+export const HSK_STARTER = HSK_100.slice(0, STARTER_DECK_SIZE);
 
 const _lookup = new Map(HSK_100.map((w) => [w.hanzi, w]));
 

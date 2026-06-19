@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import type { Flashcard } from "@/lib/types";
 import { apiJson, swrFetcher } from "@/lib/api";
-import { AI_SENTENCE_MAX_WORDS } from "@/lib/hsk";
+import { AI_SENTENCE_MAX_WORDS, STARTER_DECK_SIZE } from "@/lib/hsk";
 import { BucketEditor } from "./BucketEditor";
 import { ModeTabs } from "./ModeTabs";
 import { PageHeader } from "./PageHeader";
@@ -150,7 +150,9 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
             <div className="subtle-card flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
               <div>
                 <div className="font-medium text-sm">New here?</div>
-                <p className="text-xs text-ink/60">Load 50 essential HSK 1–2 words to get started instantly.</p>
+                <p className="text-xs text-ink/60">
+                  Load {STARTER_DECK_SIZE} essential HSK 1 words to get started instantly.
+                </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <button
@@ -158,7 +160,7 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
                   onClick={loadStarterDeck}
                   disabled={starterLoading}
                 >
-                  {starterLoading ? "Loading…" : "Load starter deck (50 words)"}
+                  {starterLoading ? "Loading…" : `Load starter deck (${STARTER_DECK_SIZE} words)`}
                 </button>
                 {starterMsg && (
                   <span className="text-xs text-ink/60">{starterMsg}</span>
