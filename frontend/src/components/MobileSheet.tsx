@@ -7,10 +7,18 @@ type Props = {
   onClose: () => void;
   children: ReactNode;
   label?: string;
+  /** Shorter sheet with lighter backdrop — used for Reader word lookup. */
+  compact?: boolean;
 };
 
 /** Full-width bottom sheet for panels on small screens (hidden at lg+). */
-export function MobileSheet({ open, onClose, children, label = "Panel" }: Props) {
+export function MobileSheet({
+  open,
+  onClose,
+  children,
+  label = "Panel",
+  compact = false,
+}: Props) {
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -31,7 +39,7 @@ export function MobileSheet({ open, onClose, children, label = "Panel" }: Props)
     <div className="fixed inset-0 z-40 lg:hidden" role="presentation">
       <button
         type="button"
-        className="absolute inset-0 bg-ink/40"
+        className={`absolute inset-0 ${compact ? "bg-ink/25" : "bg-ink/40"}`}
         onClick={onClose}
         aria-label={`Close ${label}`}
       />
@@ -39,7 +47,9 @@ export function MobileSheet({ open, onClose, children, label = "Panel" }: Props)
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="absolute bottom-0 left-0 right-0 max-h-[88vh] overflow-y-auto rounded-t-xl border-t border-ink/10 bg-paper p-4 shadow-xl pb-[max(1rem,env(safe-area-inset-bottom))]"
+        className={`absolute bottom-0 left-0 right-0 overflow-y-auto rounded-t-xl border-t border-ink/10 bg-paper p-4 shadow-xl pb-[max(1rem,env(safe-area-inset-bottom))] ${
+          compact ? "max-h-[50vh]" : "max-h-[88vh]"
+        }`}
       >
         {children}
       </div>

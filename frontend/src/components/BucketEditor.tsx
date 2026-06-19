@@ -106,17 +106,25 @@ function CardRow({
   }
 
   return (
-    <div className="grid grid-cols-1 items-start gap-3 p-3 md:grid-cols-[minmax(140px,180px)_1fr_auto]">
+    <div
+      className={
+        editing
+          ? "flex flex-col gap-2 p-2 sm:p-3 md:grid md:grid-cols-[minmax(140px,180px)_1fr_auto] md:items-start md:gap-3"
+          : "flex items-center gap-2 p-2 sm:p-3 md:grid md:grid-cols-[minmax(140px,180px)_1fr_auto] md:items-start md:gap-3"
+      }
+    >
       <WordHead
         hanzi={card.hanzi}
         hanziTraditional={card.hanziTraditional}
         pinyin={card.pinyin}
         jyutping={card.jyutping}
-        size="sm"
+        size="xs"
         showAltScript={false}
+        inlineRomanization
+        className="w-[4.25rem] shrink-0 md:w-auto"
       />
       {editing ? (
-        <div className="space-y-2">
+        <div className="space-y-2 md:col-span-1">
           <input
             className="input text-sm"
             placeholder="jyutping"
@@ -137,25 +145,27 @@ function CardRow({
           />
         </div>
       ) : (
-        <div className="text-sm">{card.definition}</div>
+        <div className="min-w-0 flex-1 text-xs leading-snug text-ink/80 line-clamp-2 md:text-sm md:leading-normal md:line-clamp-none">
+          {card.definition || <span className="text-ink/40">No definition</span>}
+        </div>
       )}
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div className="flex shrink-0 flex-row gap-1 md:flex-col md:gap-2">
         {editing ? (
           <>
-            <button className="btn-outline" onClick={save}>
+            <button className="btn-outline !min-h-8 !min-w-0 px-2.5 py-1 text-xs md:min-h-[44px] md:px-3 md:py-2 md:text-sm" onClick={save}>
               Save
             </button>
-            <button className="btn-outline" onClick={() => setEditing(false)}>
+            <button className="btn-outline !min-h-8 !min-w-0 px-2.5 py-1 text-xs md:min-h-[44px] md:px-3 md:py-2 md:text-sm" onClick={() => setEditing(false)}>
               Cancel
             </button>
           </>
         ) : (
           <>
-            <button className="btn-outline" onClick={() => setEditing(true)}>
+            <button className="btn-outline !min-h-8 !min-w-0 px-2.5 py-1 text-xs md:min-h-[44px] md:px-3 md:py-2 md:text-sm" onClick={() => setEditing(true)}>
               Edit
             </button>
             <button
-              className="btn-outline text-red-600"
+              className="btn-outline !min-h-8 !min-w-0 px-2.5 py-1 text-xs text-red-600 md:min-h-[44px] md:px-3 md:py-2 md:text-sm"
               onClick={onRemove}
               title="Remove from bucket"
             >

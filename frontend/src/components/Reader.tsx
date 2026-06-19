@@ -13,6 +13,7 @@ import {
   type ActiveLink,
 } from "@/lib/reader-alignment";
 import { countHanzi, TRANSLATE_HANZI_LIMIT } from "@/lib/chinese";
+import { prefersFinePointer } from "@/lib/pointer";
 import { resolveWordPanelGloss } from "@/lib/word-gloss";
 import { PageHeader } from "./PageHeader";
 import { MobileSheet } from "./MobileSheet";
@@ -23,10 +24,6 @@ import { TokenGlossBadge, TranslationSentence } from "./ReaderTranslation";
 type Token = ReaderReadResult["tokens"][number];
 
 const HAN = /[\u3400-\u9fff\uf900-\ufaff]/;
-
-const SAMPLE = `今天天气真好，所以老师带学生去公园看花。
-我最近在学习中文，每天会读一些短文。
-学习语言非常有意思。`;
 
 const NEXT_STEPS = [
   { href: "/flashcards", title: "Flashcards", body: "Save words you didn't know and drill yourself." },
@@ -60,6 +57,8 @@ export function Reader({ initialText }: { initialText?: string }) {
   const [showTranslation, setShowTranslation] = useState(true);
   const [activeLink, setActiveLink] = useState<ActiveLink | null>(null);
   const [playingSentence, setPlayingSentence] = useState<number | null>(null);
+  const [finePointer, setFinePointer] = useState(true);
+  const [sampleLoading, setSampleLoading] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const tokens = readResult?.tokens ?? null;
@@ -77,6 +76,51 @@ export function Reader({ initialText }: { initialText?: string }) {
     if (initialText && initialText !== text) setText(initialText);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialText]);
+
+  useEffect(() => {
+    setFinePointer(prefersFinePointer());
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const onChange = () => setFinePointer(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    if (finePointer) return;
+    function onPointerDown(e: PointerEvent) {
+      const target = e.target as Element;
+      if (target.closest(".hanzi-token, .english-token, [data-reader-gloss]")) return;
+      setActiveLink(null);
+      setSelected(null);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [finePointer]);
+
+  const closeWordPanel = useCallback(() => {
+    setSelected(null);
+    setActiveLink(null);
+  }, []);
+
+  const generateSample = useCallback(async () => {
+    setSampleLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/reader/sample");
+      const body = (await res.json()) as { text?: string; error?: string };
+      if (!res.ok || !body.text) {
+        throw new Error(body.error ?? "Could not generate sample");
+      }
+      setText(body.text);
+      setReadResult(null);
+      setSelected(null);
+      setActiveLink(null);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setSampleLoading(false);
+    }
+  }, []);
 
   const onRead = useCallback(async () => {
     setError(null);
@@ -133,6 +177,30 @@ export function Reader({ initialText }: { initialText?: string }) {
       if (s.includes(word)) return s.trim();
     }
     return "";
+  }
+
+  function handleTokenActivate(tok: Token, sentenceIdx: number, tokenIndex: number) {
+    const link = { sentenceIdx, tokenIndex };
+    if (finePointer) {
+      onTokenClick(tok);
+      setActiveLink(link);
+      return;
+    }
+    const same =
+      activeLink?.sentenceIdx === sentenceIdx && activeLink?.tokenIndex === tokenIndex;
+    if (same) {
+      setActiveLink(null);
+      setSelected(null);
+    } else {
+      setActiveLink(link);
+      setSelected(null);
+    }
+  }
+
+  function handleLookUpActiveToken() {
+    if (!activeLink || !tokens) return;
+    const tok = tokens[activeLink.tokenIndex];
+    if (tok?.is_hanzi) onTokenClick(tok);
   }
 
   function onTokenClick(token: Token) {
@@ -194,17 +262,16 @@ export function Reader({ initialText }: { initialText?: string }) {
       sentenceIdx,
     );
 
-    const onMouseEnter = () => setActiveLink({ sentenceIdx, tokenIndex: i });
+    const onMouseEnter = finePointer
+      ? () => setActiveLink({ sentenceIdx, tokenIndex: i })
+      : undefined;
 
     const sharedProps = {
       "data-active": active ? "true" : undefined,
       "data-link-hover": linked ? "true" : undefined,
       "data-filler": isFiller ? "true" : undefined,
       title: gloss,
-      onClick: () => {
-        onTokenClick(tok);
-        setActiveLink({ sentenceIdx, tokenIndex: i });
-      },
+      onClick: () => handleTokenActivate(tok, sentenceIdx, i),
       onMouseEnter,
     };
 
@@ -230,7 +297,11 @@ export function Reader({ initialText }: { initialText?: string }) {
 
       <PageHeader
         title="Smart Reader"
-        subtitle={`Paste up to ${TRANSLATE_HANZI_LIMIT} Chinese characters — segmentation, translation, hover links, and listen sentence-by-sentence.`}
+        subtitle={
+          finePointer
+            ? `Paste up to ${TRANSLATE_HANZI_LIMIT} Chinese characters — segmentation, translation, hover links, and listen sentence-by-sentence.`
+            : `Paste up to ${TRANSLATE_HANZI_LIMIT} Chinese characters — tap a word to see its English match; tap Look up for the dictionary.`
+        }
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_400px]">
@@ -259,8 +330,13 @@ export function Reader({ initialText }: { initialText?: string }) {
                 {loading ? "Reading & translating…" : "Read"}
               </button>
               <div className="flex flex-wrap gap-2">
-                <button className="btn-outline" onClick={() => setText(SAMPLE)} type="button">
-                  Load sample
+                <button
+                  className="btn-outline"
+                  onClick={generateSample}
+                  disabled={sampleLoading}
+                  type="button"
+                >
+                  {sampleLoading ? "Generating…" : "Generate sample"}
                 </button>
                 <button
                   className="btn-ghost"
@@ -306,7 +382,7 @@ export function Reader({ initialText }: { initialText?: string }) {
                 ref={containerRef}
                 className="space-y-3"
                 onMouseUp={onMouseUp}
-                onMouseLeave={() => setActiveLink(null)}
+                onMouseLeave={finePointer ? () => setActiveLink(null) : undefined}
               >
                 {sentenceGroups.map((indices, sentenceIdx) => {
                   const translation = sentences[sentenceIdx];
@@ -336,11 +412,15 @@ export function Reader({ initialText }: { initialText?: string }) {
                       </div>
 
                       {isActive && (
-                        <TokenGlossBadge
-                          sentences={sentences}
-                          tokens={tokens}
-                          activeLink={activeLink}
-                        />
+                        <div data-reader-gloss>
+                          <TokenGlossBadge
+                            sentences={sentences}
+                            tokens={tokens}
+                            activeLink={activeLink}
+                            showLookUp={!finePointer}
+                            onLookUp={handleLookUpActiveToken}
+                          />
+                        </div>
                       )}
 
                       {showTranslation && translation && (
@@ -349,6 +429,7 @@ export function Reader({ initialText }: { initialText?: string }) {
                           sentenceIdx={sentenceIdx}
                           activeLink={activeLink}
                           onActivateLink={setActiveLink}
+                          useHoverLink={finePointer}
                         />
                       )}
                     </div>
@@ -369,6 +450,12 @@ export function Reader({ initialText }: { initialText?: string }) {
               <div className="subtle-card text-sm text-ink/70">
                 Paste up to {TRANSLATE_HANZI_LIMIT} Chinese characters and press <b>Read</b>. Each sentence has a{" "}
                 <b>🔊</b> button to hear it aloud.
+                {!finePointer && (
+                  <>
+                    {" "}
+                    Tap a word to highlight its English match; tap <b>Look up word</b> for the dictionary.
+                  </>
+                )}
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {NEXT_STEPS.map((s) => (
@@ -389,12 +476,13 @@ export function Reader({ initialText }: { initialText?: string }) {
 
       <MobileSheet
         open={Boolean(selected)}
-        onClose={() => setSelected(null)}
+        onClose={closeWordPanel}
         label="Word panel"
+        compact
       >
         <WordPanel
           selection={selected}
-          onClose={() => setSelected(null)}
+          onClose={closeWordPanel}
           className="!border-0 !p-0 !shadow-none"
         />
       </MobileSheet>

@@ -117,7 +117,7 @@ function GuideModal({ onClose }: { onClose: () => void }) {
             <p className="font-medium text-ink">While you read</p>
             <ul className="mt-2 list-inside list-disc space-y-1">
               <li>
-                Try <b>Load sample</b> if you don&apos;t have text handy.
+                Try <b>Generate sample</b> if you don&apos;t have text handy.
               </li>
               <li>
                 Toggle pinyin and the English translation with the checkboxes above

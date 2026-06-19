@@ -50,6 +50,7 @@ export function GraphCanvas({
   } | null>(null);
   const justPannedRef = useRef(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
   const [, setTick] = useState(0);
   // Animation-loop control so we can pause when the layout settles.
   const runningRef = useRef(false);
@@ -177,6 +178,30 @@ export function GraphCanvas({
     };
   }, [nodes, visibleEdges, ensureRunning]);
 
+  // Stop the page from scrolling while panning or dragging on touch devices.
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+
+    function isInteracting() {
+      return panRef.current != null || draggingRef.current != null;
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (isInteracting()) e.preventDefault();
+    }
+
+    wrap.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => wrap.removeEventListener("touchmove", onTouchMove);
+  }, []);
+
+  const setPageScrollLocked = useCallback((locked: boolean) => {
+    document.body.style.overflow = locked ? "hidden" : "";
+    document.body.style.touchAction = locked ? "none" : "";
+  }, []);
+
+  useEffect(() => () => setPageScrollLocked(false), [setPageScrollLocked]);
+
   const neighborIds = useMemo(() => {
     if (!selectedId) return new Set<string>();
     const set = new Set<string>();
@@ -208,17 +233,20 @@ export function GraphCanvas({
 
   function onNodePointerDown(e: React.PointerEvent<SVGGElement>, id: string) {
     e.stopPropagation();
+    e.preventDefault();
     const { x: sx, y: sy } = svgPoint(e.clientX, e.clientY);
     const { x: wx, y: wy } = toWorld(sx, sy);
     const p = positionsRef.current[id];
     if (!p) return;
     draggingRef.current = { id, offsetX: wx - p.x, offsetY: wy - p.y };
     e.currentTarget.setPointerCapture?.(e.pointerId);
+    setPageScrollLocked(true);
     ensureRunning(); // wake the layout so neighbours react to the drag
   }
 
   function onSvgPointerDown(e: React.PointerEvent<SVGSVGElement>) {
     if (draggingRef.current) return;
+    e.preventDefault();
     panRef.current = {
       startClientX: e.clientX,
       startClientY: e.clientY,
@@ -227,9 +255,11 @@ export function GraphCanvas({
       moved: false,
     };
     (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    setPageScrollLocked(true);
   }
 
   function onPointerMove(e: React.PointerEvent) {
+    if (draggingRef.current || panRef.current) e.preventDefault();
     const drag = draggingRef.current;
     if (drag) {
       const { x: sx, y: sy } = svgPoint(e.clientX, e.clientY);
@@ -259,12 +289,20 @@ export function GraphCanvas({
     rerender();
   }
 
-  function onPointerUp() {
+  function onPointerUp(e?: React.PointerEvent) {
+    if (e) {
+      try {
+        (e.currentTarget as Element).releasePointerCapture?.(e.pointerId);
+      } catch {
+        // capture may already be released
+      }
+    }
     if (panRef.current) {
       justPannedRef.current = panRef.current.moved;
       panRef.current = null;
     }
     draggingRef.current = null;
+    setPageScrollLocked(false);
   }
 
   function onSvgClick() {
@@ -346,15 +384,20 @@ export function GraphCanvas({
   const v = viewportRef.current;
 
   return (
-    <div className="relative">
+    <div
+      ref={wrapRef}
+      className="relative overscroll-contain touch-none"
+      style={{ touchAction: "none" }}
+    >
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
-        className="h-[50vh] min-h-[280px] w-full touch-none select-none rounded-xl border border-ink/10 bg-paper sm:min-h-[400px] lg:h-[72vh] lg:min-h-[520px]"
-        style={{ cursor: panRef.current ? "grabbing" : "grab" }}
+        className="h-[50vh] min-h-[280px] w-full select-none rounded-xl border border-ink/10 bg-paper sm:min-h-[400px] lg:h-[72vh] lg:min-h-[520px]"
+        style={{ cursor: panRef.current ? "grabbing" : "grab", touchAction: "none" }}
         onPointerDown={onSvgPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
         onPointerLeave={onPointerUp}
         onClick={onSvgClick}
       >
@@ -437,9 +480,9 @@ export function GraphCanvas({
         </g>
       </svg>
 
-      <div className="absolute right-2 top-2 flex flex-col gap-1 rounded-md border border-ink/10 bg-white/95 p-1 shadow-sm sm:right-3 sm:top-3">
+      <div className="absolute right-2 top-2 z-10 flex flex-col gap-1 rounded-md border border-ink/10 bg-white/95 p-1 shadow-sm sm:right-3 sm:top-3">
         <button
-          className="grid h-11 w-11 place-items-center rounded text-base text-ink/80 hover:bg-ink/5 sm:h-7 sm:w-7"
+          className="grid h-11 w-11 touch-manipulation place-items-center rounded text-base text-ink/80 hover:bg-ink/5 sm:h-7 sm:w-7"
           onClick={() => zoomBy(1.2)}
           title="Zoom in"
           aria-label="Zoom in"
@@ -447,7 +490,7 @@ export function GraphCanvas({
           +
         </button>
         <button
-          className="grid h-11 w-11 place-items-center rounded text-base text-ink/80 hover:bg-ink/5 sm:h-7 sm:w-7"
+          className="grid h-11 w-11 touch-manipulation place-items-center rounded text-base text-ink/80 hover:bg-ink/5 sm:h-7 sm:w-7"
           onClick={() => zoomBy(1 / 1.2)}
           title="Zoom out"
           aria-label="Zoom out"
@@ -455,7 +498,7 @@ export function GraphCanvas({
           −
         </button>
         <button
-          className="grid h-11 w-11 place-items-center rounded text-xs text-ink/80 hover:bg-ink/5 sm:h-7 sm:w-7"
+          className="grid h-11 w-11 touch-manipulation place-items-center rounded text-xs text-ink/80 hover:bg-ink/5 sm:h-7 sm:w-7"
           onClick={fitToContent}
           title="Fit knowledge graph"
           aria-label="Fit knowledge graph"
@@ -464,8 +507,9 @@ export function GraphCanvas({
         </button>
       </div>
 
-      <div className="pointer-events-none absolute bottom-2 left-2 hidden rounded-md bg-white/85 px-2 py-1 text-[11px] text-ink/60 shadow-sm sm:block">
-        Use +/− to zoom · drag empty space to pan · drag node to move
+      <div className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-white/85 px-2 py-1 text-[11px] text-ink/60 shadow-sm">
+        <span className="sm:hidden">Drag to pan · drag a node to move</span>
+        <span className="hidden sm:inline">Use +/− to zoom · drag empty space to pan · drag node to move</span>
       </div>
     </div>
   );

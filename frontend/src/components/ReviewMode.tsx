@@ -98,10 +98,10 @@ export function ReviewMode({ onDone }: Props) {
 
       {/* card */}
       <div
-        className="card flex min-h-[220px] cursor-pointer flex-col items-center justify-center space-y-3 select-none"
+        className="card flex min-h-[140px] cursor-pointer flex-col items-center justify-center space-y-2 px-3 py-4 select-none sm:min-h-[220px] sm:space-y-3"
         onClick={() => !flipped && setFlipped(true)}
       >
-        <div className="hanzi text-5xl font-bold">
+        <div className="hanzi text-4xl font-bold sm:text-5xl">
           {displayStoredHanzi(card.hanzi, card.hanziTraditional)}
         </div>
 
@@ -122,9 +122,9 @@ export function ReviewMode({ onDone }: Props) {
 
       {/* rating buttons — only visible after flip */}
       {flipped && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <button
-            className="btn-outline border-red-200 text-red-600 hover:bg-red-50"
+            className="btn-outline !min-h-10 border-red-200 px-2 py-1.5 text-red-600 hover:bg-red-50 sm:!min-h-[44px] sm:px-3 sm:py-2"
             onClick={() => rate(1)}
             disabled={rating}
           >
@@ -132,7 +132,7 @@ export function ReviewMode({ onDone }: Props) {
             <span className="block text-xs text-ink/50">retry soon</span>
           </button>
           <button
-            className="btn-outline"
+            className="btn-outline !min-h-10 px-2 py-1.5 sm:!min-h-[44px] sm:px-3 sm:py-2"
             onClick={() => rate(3)}
             disabled={rating}
           >
@@ -142,7 +142,7 @@ export function ReviewMode({ onDone }: Props) {
             </span>
           </button>
           <button
-            className="btn-outline border-green-200 text-green-700 hover:bg-green-50"
+            className="btn-outline !min-h-10 border-green-200 px-2 py-1.5 text-green-700 hover:bg-green-50 sm:!min-h-[44px] sm:px-3 sm:py-2"
             onClick={() => rate(5)}
             disabled={rating}
           >

@@ -16,6 +16,7 @@ type SentenceEnglishProps = {
   sentenceIdx: number;
   activeLink: ActiveLink | null;
   onActivateLink: (link: ActiveLink | null) => void;
+  useHoverLink?: boolean;
 };
 
 export function TranslationSentence({
@@ -23,6 +24,7 @@ export function TranslationSentence({
   sentenceIdx,
   activeLink,
   onActivateLink,
+  useHoverLink = true,
 }: SentenceEnglishProps) {
   const segments = buildEnglishSegments(sent.english, sent.alignments);
 
@@ -43,8 +45,10 @@ export function TranslationSentence({
             key={i}
             className="english-token"
             data-link-hover={highlighted ? "true" : undefined}
-            onMouseEnter={() =>
-              onActivateLink({ sentenceIdx, tokenIndex: seg.tokenIndex! })
+            onMouseEnter={
+              useHoverLink
+                ? () => onActivateLink({ sentenceIdx, tokenIndex: seg.tokenIndex! })
+                : undefined
             }
             onClick={() =>
               onActivateLink(
@@ -67,10 +71,18 @@ type GlossBarProps = {
   sentences: ReaderSentenceTranslation[];
   tokens: Token[];
   activeLink: ActiveLink | null;
+  showLookUp?: boolean;
+  onLookUp?: () => void;
 };
 
-/** Badge shown at the bottom of the hovered token — gloss for all tokens, grammar label for fillers. */
-export function TokenGlossBadge({ sentences, tokens, activeLink }: GlossBarProps) {
+/** Badge shown below the active token — gloss for all tokens, grammar label for fillers. */
+export function TokenGlossBadge({
+  sentences,
+  tokens,
+  activeLink,
+  showLookUp = false,
+  onLookUp,
+}: GlossBarProps) {
   if (!activeLink) return null;
 
   const sent = sentences[activeLink.sentenceIdx];
@@ -88,11 +100,13 @@ export function TokenGlossBadge({ sentences, tokens, activeLink }: GlossBarProps
   const phrase = alignment.english_phrase;
 
   return (
-    <div className={`flex flex-wrap items-center gap-2 px-2 py-1 rounded-md text-sm ${
-      isFiller
-        ? "bg-amber-50 border border-amber-200 text-amber-800"
-        : "bg-accent2/5 border border-accent2/20 text-ink/80"
-    }`}>
+    <div
+      className={`flex flex-wrap items-center gap-2 rounded-md px-2 py-1 text-sm ${
+        isFiller
+          ? "border border-amber-200 bg-amber-50 text-amber-800"
+          : "border border-accent2/20 bg-accent2/5 text-ink/80"
+      }`}
+    >
       {isFiller ? (
         <>
           <span className="text-xs font-semibold uppercase tracking-wide text-amber-600">
@@ -109,6 +123,11 @@ export function TokenGlossBadge({ sentences, tokens, activeLink }: GlossBarProps
             </span>
           )}
         </>
+      )}
+      {showLookUp && onLookUp && (
+        <button type="button" className="btn-outline ml-auto shrink-0 text-xs" onClick={onLookUp}>
+          Look up word →
+        </button>
       )}
     </div>
   );

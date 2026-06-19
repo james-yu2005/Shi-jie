@@ -177,7 +177,7 @@ def is_hanzi(ch: str) -> bool:
     return bool(_HAN_RE.match(ch))
 
 
-TRANSLATE_HANZI_LIMIT = 75
+TRANSLATE_HANZI_LIMIT = 100
 
 
 def count_hanzi(text: str) -> int:
