@@ -89,7 +89,13 @@ export function Reader({ initialText }: { initialText?: string }) {
     if (finePointer) return;
     function onPointerDown(e: PointerEvent) {
       const target = e.target as Element;
-      if (target.closest(".hanzi-token, .english-token, [data-reader-gloss]")) return;
+      if (
+        target.closest(
+          ".hanzi-token, .english-token, [data-reader-gloss], [data-reader-word-panel], [role='dialog']",
+        )
+      ) {
+        return;
+      }
       setActiveLink(null);
       setSelected(null);
     }

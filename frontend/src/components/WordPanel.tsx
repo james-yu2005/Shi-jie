@@ -103,7 +103,7 @@ export function WordPanel({ selection, onClose, className = "" }: Props) {
 
   if (!selection) {
     return (
-      <div className={`card text-sm text-ink/60 ${className}`}>
+      <div className={`card text-sm text-ink/60 ${className}`} data-reader-word-panel>
         <div className="label mb-2">Word panel</div>
         Click a word in the smart reader to see its definition, romanization, stroke order,
         and audio. You can also drag-select multi-character phrases.
@@ -112,7 +112,7 @@ export function WordPanel({ selection, onClose, className = "" }: Props) {
   }
 
   return (
-    <div className={`card space-y-4 ${className}`}>
+    <div className={`card space-y-4 ${className}`} data-reader-word-panel>
       <div className="flex items-start justify-between gap-3">
         <WordHead
           hanzi={selection.word}
