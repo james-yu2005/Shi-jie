@@ -2,36 +2,36 @@ import type { GameAttempt } from "./types";
 
 export const DAILY_MAX_ATTEMPTS = 3;
 
-/** Static demo puzzle for onboarding — scenic landscape photo. */
+/** Static demo puzzle for onboarding — fixed laptop on desk image. */
 export const DAILY_EXAMPLE = {
-  imageUrl: "https://picsum.photos/seed/example-demo/400/300",
-  targetDesc: "一座山在蓝色的湖边。",
+  imageUrl: "https://picsum.photos/id/0/400/300",
+  targetDesc: "一台笔记本电脑在桌子上。",
   attempts: [
     {
-      prompt: "有一座山。",
-      score: 48,
+      prompt: "有一台电脑。",
+      score: 52,
       solved: false,
-      missing_elements: ["blue lake", "beside/at the edge"],
+      missing_elements: ["laptop (not just computer)", "on desk"],
       grammar_errors: [],
-      hint: "You found the mountain — now describe the water and their relationship.",
+      hint: "You found the computer — now specify it's a laptop and where it is.",
       reveal: null,
       vocab_hints: [
         {
-          hanzi: "湖",
-          pinyin: "hú",
-          jyutping: "wu4",
-          definition: "lake",
+          hanzi: "笔记本电脑",
+          pinyin: "bǐjìběn diànnǎo",
+          jyutping: "bat1 gei3 bun2 din6 nou5",
+          definition: "laptop computer",
         },
       ],
     },
     {
-      prompt: "一座山在蓝色的湖边。",
-      score: 96,
+      prompt: "一台笔记本电脑在桌子上。",
+      score: 97,
       solved: true,
       missing_elements: [],
       grammar_errors: [],
       hint: "",
-      reveal: "一座山在蓝色的湖边。",
+      reveal: "一台笔记本电脑在桌子上。",
       vocab_hints: [],
     },
   ] satisfies GameAttempt[],
