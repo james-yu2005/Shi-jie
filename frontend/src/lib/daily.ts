@@ -2,36 +2,36 @@ import type { GameAttempt } from "./types";
 
 export const DAILY_MAX_ATTEMPTS = 3;
 
-/** Static demo puzzle for onboarding — orange cat on a desk. */
+/** Static demo puzzle for onboarding — scenic landscape photo. */
 export const DAILY_EXAMPLE = {
-  imageUrl: "https://picsum.photos/seed/example-cat/400/300",
-  targetDesc: "一只橙色的猫坐在木桌上。",
+  imageUrl: "https://picsum.photos/seed/example-demo/400/300",
+  targetDesc: "一座山在蓝色的湖边。",
   attempts: [
     {
-      prompt: "有一只猫。",
-      score: 42,
+      prompt: "有一座山。",
+      score: 48,
       solved: false,
-      missing_elements: ["orange fur", "wooden table"],
+      missing_elements: ["blue lake", "beside/at the edge"],
       grammar_errors: [],
-      hint: "You spotted the cat — now add its color and where it's sitting.",
+      hint: "You found the mountain — now describe the water and their relationship.",
       reveal: null,
       vocab_hints: [
         {
-          hanzi: "桌子",
-          pinyin: "zhuōzi",
-          jyutping: "coek1 zi2",
-          definition: "table; desk",
+          hanzi: "湖",
+          pinyin: "hú",
+          jyutping: "wu4",
+          definition: "lake",
         },
       ],
     },
     {
-      prompt: "一只橙色的猫坐在木桌上。",
-      score: 95,
+      prompt: "一座山在蓝色的湖边。",
+      score: 96,
       solved: true,
       missing_elements: [],
       grammar_errors: [],
       hint: "",
-      reveal: "一只橙色的猫坐在木桌上。",
+      reveal: "一座山在蓝色的湖边。",
       vocab_hints: [],
     },
   ] satisfies GameAttempt[],
