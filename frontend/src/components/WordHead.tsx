@@ -84,6 +84,7 @@ export function WordHead({
     { pinyin, jyutping, hanziTraditional },
   );
   const headword = primary;
+  const useCantonese = preferences.audio === "cantonese";
 
   return (
     <div className={className}>
@@ -99,15 +100,16 @@ export function WordHead({
             type="button"
             className="btn-outline shrink-0"
             onClick={() => playAudio(headword)}
-            aria-label="Play pronunciation"
+            aria-label={`Play ${useCantonese ? "Cantonese" : "Mandarin"} pronunciation`}
+            title={`Listen (${useCantonese ? "Cantonese" : "Mandarin"})`}
           >
             🔊
           </button>
         )}
       </div>
       <RomanizationLines
-        pinyin={pin}
-        jyutping={jyut}
+        pinyin={useCantonese ? "" : pin}
+        jyutping={useCantonese ? jyut : ""}
         compact={size === "sm" || size === "xs"}
         inline={inlineRomanization}
         className="mt-0.5"

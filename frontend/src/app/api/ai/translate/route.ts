@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { getSessionUser } from "@/lib/auth";
 import { backendFetch } from "@/lib/backend";
 import { countHanzi, TRANSLATE_HANZI_LIMIT } from "@/lib/chinese";
+import { clientIp, enforceRateLimit } from "@/lib/rate-limit";
 
 const Body = z.object({
   text: z
@@ -12,7 +14,21 @@ const Body = z.object({
     }),
 });
 
+const GUEST_LIMIT = 20;
+const AUTH_LIMIT = 60;
+const WINDOW_MS = 15 * 60 * 1000;
+
 export async function POST(req: Request) {
+  const user = await getSessionUser();
+  const limited = enforceRateLimit(
+    req,
+    "ai-translate",
+    user ? AUTH_LIMIT : GUEST_LIMIT,
+    WINDOW_MS,
+    user?.id ?? clientIp(req),
+  );
+  if (limited) return limited;
+
   const parsed = Body.safeParse(await req.json());
   if (!parsed.success) {
     const message = parsed.error.issues[0]?.message ?? "Invalid request";

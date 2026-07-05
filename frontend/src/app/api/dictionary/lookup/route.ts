@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { backendFetch } from "@/lib/backend";
+import { enforceRateLimit } from "@/lib/rate-limit";
+
+const LIMIT = 120;
+const WINDOW_MS = 60 * 1000;
 
 export async function GET(req: Request) {
+  const limited = enforceRateLimit(req, "dictionary-lookup", LIMIT, WINDOW_MS);
+  if (limited) return limited;
+
   const url = new URL(req.url);
   const word = url.searchParams.get("word");
   if (!word) {

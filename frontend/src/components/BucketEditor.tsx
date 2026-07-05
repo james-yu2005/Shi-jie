@@ -22,12 +22,17 @@ export function BucketEditor({ cards, onAdd, onRemove, onUpdate }: Props) {
     e.preventDefault();
     if (!hanzi.trim()) return;
     setAdding(true);
-    await onAdd(hanzi.trim(), pinyin.trim(), jyutping.trim(), definition.trim());
-    setHanzi("");
-    setPinyin("");
-    setJyutping("");
-    setDefinition("");
-    setAdding(false);
+    try {
+      await onAdd(hanzi.trim(), pinyin.trim(), jyutping.trim(), definition.trim());
+      setHanzi("");
+      setPinyin("");
+      setJyutping("");
+      setDefinition("");
+    } catch {
+      // parent surfaces the error banner
+    } finally {
+      setAdding(false);
+    }
   }
 
   return (

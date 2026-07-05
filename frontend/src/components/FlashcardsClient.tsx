@@ -25,6 +25,7 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
   const [paragraph, setParagraph] = useState<string | null>(null);
   const [genLoading, setGenLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [starterLoading, setStarterLoading] = useState(false);
   const [starterMsg, setStarterMsg] = useState<string | null>(null);
 
@@ -41,7 +42,10 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
     try {
       await apiJson(`/api/bucket/${id}`, { method: "DELETE" });
       void setCards((cs) => cs.filter((c) => c.id !== id));
-    } catch { /* leave list untouched */ }
+      setActionError(null);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    }
   }, [setCards]);
 
   const update = useCallback(async (id: string, patch: Partial<Flashcard>) => {
@@ -51,7 +55,10 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
         json: patch,
       });
       void setCards((cs) => cs.map((c) => (c.id === id ? j.flashcard : c)));
-    } catch { /* ignore */ }
+      setActionError(null);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    }
   }, [setCards]);
 
   const add = useCallback(async (hanzi: string, pinyin: string, jyutping: string, definition: string) => {
@@ -64,7 +71,11 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
         const exists = cs.some((c) => c.id === j.flashcard.id);
         return exists ? cs.map((c) => (c.id === j.flashcard.id ? j.flashcard : c)) : [j.flashcard, ...cs];
       });
-    } catch { /* ignore */ }
+      setActionError(null);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+      throw e;
+    }
   }, [setCards]);
 
   const loadStarterDeck = useCallback(async () => {
@@ -144,6 +155,11 @@ export function FlashcardsClient({ initialCards }: { initialCards: Flashcard[] }
 
       {mode === "manage" && (
         <>
+          {actionError && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {actionError}
+            </div>
+          )}
           <BucketEditor cards={cards} onAdd={add} onRemove={remove} onUpdate={update} />
           {/* Starter deck — visible when bucket is small */}
           {cards.length < 10 && (

@@ -63,6 +63,7 @@ export function LearningPreferencesProvider({ children }: { children: ReactNode 
   const { status } = useSession();
   const signedIn = status === "authenticated";
   const syncedRef = useRef(false);
+  const serverInitRef = useRef(false);
 
   const [localPrefs, setLocalPrefs] = useState<UserPreferences>(DEFAULT_PREFERENCES);
 
@@ -75,6 +76,25 @@ export function LearningPreferencesProvider({ children }: { children: ReactNode 
   useEffect(() => {
     setLocalPrefs(readLocalPreferences());
   }, []);
+
+  useEffect(() => {
+    if (!signedIn) {
+      serverInitRef.current = false;
+      return;
+    }
+    if (!serverPrefs || serverInitRef.current) return;
+
+    const local = readLocalPreferences();
+    const localIsDefault =
+      local.script === DEFAULT_PREFERENCES.script &&
+      local.audio === DEFAULT_PREFERENCES.audio;
+
+    if (localIsDefault) {
+      setLocalPrefs(serverPrefs);
+      writeLocalPreferences(serverPrefs);
+    }
+    serverInitRef.current = true;
+  }, [signedIn, serverPrefs]);
 
   useEffect(() => {
     if (!signedIn || syncedRef.current) return;
@@ -91,10 +111,7 @@ export function LearningPreferencesProvider({ children }: { children: ReactNode 
     }
   }, [signedIn, mutate]);
 
-  const preferences = useMemo(
-    () => (signedIn && serverPrefs ? serverPrefs : localPrefs),
-    [signedIn, serverPrefs, localPrefs],
-  );
+  const preferences = localPrefs;
 
   useEffect(() => {
     document.body.dataset.script = preferences.script;
@@ -149,8 +166,8 @@ export function LearningPreferencesProvider({ children }: { children: ReactNode 
 
   const romanization = useCallback(
     (entry: DictEntry) => {
-      if (preferences.audio === "cantonese" && entry.jyutping) {
-        return entry.jyutping;
+      if (preferences.audio === "cantonese") {
+        return entry.jyutping || entry.pinyin || entry.pinyin_numbered || "";
       }
       return entry.pinyin || entry.pinyin_numbered || "";
     },

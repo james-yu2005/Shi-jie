@@ -4,6 +4,10 @@ import {
   countHanzi,
   trimToHanziLimit,
 } from "@/lib/chinese";
+import { enforceRateLimit } from "@/lib/rate-limit";
+
+const LIMIT = 30;
+const WINDOW_MS = 60 * 60 * 1000;
 
 const JINRISHICI_URL = "https://v2.jinrishici.com/sentence";
 
@@ -33,7 +37,10 @@ function pickFallback(): string {
   );
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const limited = enforceRateLimit(req, "reader-sample", LIMIT, WINDOW_MS);
+  if (limited) return limited;
+
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
       const res = await fetch(JINRISHICI_URL, {

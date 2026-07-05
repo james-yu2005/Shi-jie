@@ -247,7 +247,7 @@ def stroke_still_url(char: str) -> str | None:
 
 def audio_url(text: str, audio: AudioPreference = "mandarin") -> str:
     """Browser-playable TTS via Google Translate (no key needed)."""
-    tl = "zh-HK" if audio == "cantonese" else "zh-CN"
+    tl = "yue-HK" if audio == "cantonese" else "zh-CN"
     return (
         "https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob"
         f"&tl={tl}&q={quote(text)}"

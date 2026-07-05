@@ -39,7 +39,8 @@ export async function GET(req: Request) {
     return new NextResponse(bytes, {
       headers: {
         "Content-Type": upstream.headers.get("content-type") ?? "audio/mpeg",
-        "Cache-Control": "public, max-age=86400",
+        "Cache-Control": "private, max-age=86400",
+        Vary: "Accept-Encoding",
       },
     });
   } catch (e) {

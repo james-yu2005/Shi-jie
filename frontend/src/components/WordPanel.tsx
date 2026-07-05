@@ -10,6 +10,22 @@ import { strokeAnimatedUrl } from "@/lib/strokes";
 import { StrokeButton } from "./StrokeButton";
 import { WordHead } from "./WordHead";
 
+type AiExplain = {
+  markdown: string;
+  loading: boolean;
+  error: string | null;
+};
+
+function renderSimpleMarkdown(text: string) {
+  const html = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n/g, "<br />");
+  return { __html: html };
+}
+
 type Props = {
   selection: { word: string; context: string } | null;
   onClose: () => void;
@@ -32,11 +48,13 @@ export function WordPanel({ selection, onClose, className = "" }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<"idle" | "saving" | "ok" | "err">("idle");
   const [graphed, setGraphed] = useState<"idle" | "saving" | "ok" | "err">("idle");
+  const [aiExplain, setAiExplain] = useState<AiExplain | null>(null);
 
   useEffect(() => {
     setData(null);
     setAdded("idle");
     setGraphed("idle");
+    setAiExplain(null);
     setError(null);
     if (!selection) return;
     const word = selection.word;
@@ -93,6 +111,23 @@ export function WordPanel({ selection, onClose, className = "" }: Props) {
       setGraphed("ok");
     } catch { setGraphed("err"); }
   }, [selection, primaryEntry]);
+
+  const onAskAi = useCallback(async () => {
+    if (!selection) return;
+    setAiExplain({ markdown: "", loading: true, error: null });
+    try {
+      const j = await apiJson<{ markdown: string }>("/api/ai/explain", {
+        method: "POST",
+        json: {
+          word: selection.word,
+          context: selection.context || null,
+        },
+      });
+      setAiExplain({ markdown: j.markdown, loading: false, error: null });
+    } catch (e) {
+      setAiExplain({ markdown: "", loading: false, error: String(e) });
+    }
+  }, [selection]);
 
   const examples = useMemo(() =>
     data?.entries.flatMap((e) =>
@@ -181,6 +216,37 @@ export function WordPanel({ selection, onClose, className = "" }: Props) {
               </div>
             </div>
           )}
+
+          <div>
+            <div className="label mb-1">Ask AI</div>
+            {signedIn ? (
+              <div className="space-y-2">
+                <button
+                  className="btn-outline w-full sm:w-auto"
+                  onClick={onAskAi}
+                  disabled={aiExplain?.loading}
+                >
+                  {aiExplain?.loading ? "Asking AI…" : aiExplain?.markdown ? "Ask again" : "Explain this word"}
+                </button>
+                {aiExplain?.error && (
+                  <div className="text-sm text-red-600">{aiExplain.error}</div>
+                )}
+                {aiExplain?.markdown && (
+                  <div
+                    className="rounded-md border border-ink/10 bg-paper p-3 text-sm leading-relaxed text-ink/90"
+                    dangerouslySetInnerHTML={renderSimpleMarkdown(aiExplain.markdown)}
+                  />
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-ink/60">
+                <button className="font-medium text-accent hover:underline" onClick={() => signIn()}>
+                  Sign in
+                </button>
+                {" "}for a deeper AI explanation with usage notes and examples.
+              </p>
+            )}
+          </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             {signedIn ? (

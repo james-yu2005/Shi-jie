@@ -64,7 +64,7 @@ _DIFFICULTY_RULES = {
         "the key elements."
     ),
     "hard": (
-        "Difficulty: MEDIUM. Use strict grading. Accept paraphrases, synonyms, and" 
+        "Difficulty: HARD. Use strict grading. Accept paraphrases, synonyms, and" 
         "alternative sentence structures whenever they communicate the same meaning as the"
         "target answer. Mark solved if the score >= 75 and the learner covered ~60 % of" 
         "the key elements."
