@@ -1,9 +1,16 @@
 "use client";
 import { memo, useCallback, useEffect, useState } from "react";
 import useSWR from "swr";
-import type { DailyGame, DailyDifficulty, GameAttempt, DailyStats } from "@/lib/types";
+import type {
+  DailyGame,
+  DailyDifficulty,
+  GameAttempt,
+  DailyStats,
+  VocabChip,
+} from "@/lib/types";
 import { apiJson, swrFetcher } from "@/lib/api";
 import { DAILY_EXAMPLE } from "@/lib/daily";
+import { markFirstWorldStep } from "@/lib/first-world";
 import { HeatmapCalendar } from "./HeatmapCalendar";
 import { PageHeader } from "./PageHeader";
 import { RomanizationLines } from "./WordHead";
@@ -22,6 +29,13 @@ function scoreBadgeClass(attempt: GameAttempt): string {
   if (attempt.solved) return `${base} bg-green-100 text-green-700`;
   if (attempt.score >= 60) return `${base} bg-yellow-100 text-yellow-800`;
   return `${base} bg-red-100 text-red-700`;
+}
+
+function appendChip(current: string, hanzi: string): string {
+  const t = current.trimEnd();
+  if (!t) return hanzi;
+  if (/[\u3400-\u9fff\uf900-\ufaff]$/.test(t)) return `${t}${hanzi}`;
+  return `${t} ${hanzi}`;
 }
 
 export function DailyClient() {
@@ -47,10 +61,47 @@ export function DailyClient() {
   const [error, setError] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<DailyDifficulty>("easy");
   const [showHistory, setShowHistory] = useState(false);
+  const [phraseBank, setPhraseBank] = useState<VocabChip[] | null>(null);
+  const [bankLoading, setBankLoading] = useState(false);
+  const [bankError, setBankError] = useState<string | null>(null);
 
   useEffect(() => {
     if (game) setDifficulty(game.difficulty ?? "easy");
   }, [game?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (game?.phraseBank?.length) setPhraseBank(game.phraseBank);
+  }, [game?.id, game?.phraseBank]);
+
+  // Prefetch phrase bank on easy before the first attempt.
+  useEffect(() => {
+    if (!game || difficulty !== "easy" || game.attemptsUsed > 0) return;
+    if (phraseBank?.length) return;
+    let cancelled = false;
+    setBankLoading(true);
+    setBankError(null);
+    apiJson<{ phraseBank: VocabChip[] }>("/api/daily/bank", { method: "POST" })
+      .then((j) => {
+        if (cancelled) return;
+        setPhraseBank(j.phraseBank ?? []);
+        void mutate(
+          (prev) =>
+            prev
+              ? { game: { ...prev.game, phraseBank: j.phraseBank ?? [] } }
+              : prev,
+          { revalidate: false },
+        );
+      })
+      .catch((e) => {
+        if (!cancelled) setBankError(String(e));
+      })
+      .finally(() => {
+        if (!cancelled) setBankLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [game?.id, difficulty, game?.attemptsUsed, phraseBank?.length, mutate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = useCallback(async () => {
     if (!game || !text.trim()) return;
@@ -62,6 +113,7 @@ export function DailyClient() {
         attemptsUsed: number;
         solved: boolean;
       }>("/api/daily/attempt", { method: "POST", json: { text: text.trim() } });
+      markFirstWorldStep("daily");
       await mutate(
         (prev) =>
           prev
@@ -83,6 +135,10 @@ export function DailyClient() {
       setSubmitting(false);
     }
   }, [game, text, mutate]);
+
+  const insertChip = useCallback((hanzi: string) => {
+    setText((prev) => appendChip(prev, hanzi));
+  }, []);
 
   const chooseDifficulty = useCallback(
     async (d: DailyDifficulty) => {
@@ -198,11 +254,53 @@ export function DailyClient() {
             </div>
             <textarea
               className="textarea hanzi min-h-[100px] text-base"
-              placeholder="用中文描述这张图片…"
+              placeholder={
+                difficulty === "easy"
+                  ? "Tap words below, or type your own…"
+                  : "用中文描述这张图片…"
+              }
               value={text}
               onChange={(e) => setText(e.target.value)}
               disabled={finished || submitting}
             />
+
+            {difficulty === "easy" && !finished && (
+              <div className="mt-3 space-y-2">
+                <div className="label">Phrase bank — tap to build</div>
+                {bankLoading && (
+                  <p className="text-sm text-ink/60">Loading words from today’s image…</p>
+                )}
+                {bankError && (
+                  <p className="text-sm text-red-600">
+                    Couldn’t load phrase bank. You can still type freely.
+                  </p>
+                )}
+                {phraseBank && phraseBank.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {phraseBank.map((chip) => (
+                      <button
+                        key={chip.hanzi}
+                        type="button"
+                        className="rounded-md border border-ink/15 bg-paper px-2.5 py-1.5 text-left transition hover:border-accent/40 hover:bg-accent/[0.06] disabled:opacity-40"
+                        onClick={() => insertChip(chip.hanzi)}
+                        disabled={submitting}
+                        title={chip.definition}
+                      >
+                        <span className="hanzi text-base leading-none">
+                          <Hanzi text={chip.hanzi} />
+                        </span>
+                        <span className="mt-0.5 block text-[10px] text-ink/50">
+                          {preferences.audio === "cantonese" && chip.jyutping
+                            ? chip.jyutping
+                            : chip.pinyin}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
                 className="btn-primary"
@@ -212,7 +310,11 @@ export function DailyClient() {
                 {submitting ? "Grading…" : "Submit"}
               </button>
               {finished && (
-                <span className="text-sm text-ink/70">
+                <span
+                  className={`text-sm font-medium ${
+                    game.solved ? "score-pulse text-green-700" : "text-ink/70"
+                  }`}
+                >
                   {game.solved
                     ? "Solved! Come back tomorrow."
                     : "Out of attempts. Come back tomorrow."}
@@ -342,7 +444,11 @@ const AttemptCard = memo(function AttemptCard({
               Example
             </span>
           )}
-          <span className={scoreBadgeClass(attempt)}>
+          <span
+            className={`${scoreBadgeClass(attempt)} ${
+              isLatest && attempt.solved ? "score-pulse" : ""
+            }`}
+          >
             {attempt.score}/100 {attempt.solved ? "· solved" : ""}
           </span>
         </div>

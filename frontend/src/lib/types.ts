@@ -69,6 +69,13 @@ export type Flashcard = {
   createdAt: string;
 };
 
+export type VocabChip = {
+  hanzi: string;
+  pinyin: string;
+  jyutping?: string;
+  definition: string;
+};
+
 export type GameAttempt = {
   prompt: string;
   score: number;
@@ -77,7 +84,7 @@ export type GameAttempt = {
   grammar_errors: { wrong: string; correct: string; explanation: string }[];
   hint: string;
   reveal: string | null;
-  vocab_hints?: { hanzi: string; pinyin: string; jyutping?: string; definition: string }[];
+  vocab_hints?: VocabChip[];
 };
 
 export type DailyDifficulty = "easy" | "medium" | "hard";
@@ -91,6 +98,7 @@ export type DailyGame = {
   attemptsUsed: number;
   solved: boolean;
   difficulty: DailyDifficulty | null;
+  phraseBank?: VocabChip[] | null;
 };
 
 export type DailyHistoryEntry = {

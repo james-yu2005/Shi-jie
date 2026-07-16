@@ -13,6 +13,8 @@ type Props = {
   showCharacter: boolean;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  /** Edge ids to briefly pulse after a new connection. */
+  bloomEdgeIds?: string[];
 };
 
 // World coordinate system: nodes live in 0..W × 0..H. We render them
@@ -32,7 +34,9 @@ export function GraphCanvas({
   showCharacter,
   selectedId,
   onSelect,
+  bloomEdgeIds = [],
 }: Props) {
+  const bloomSet = useMemo(() => new Set(bloomEdgeIds), [bloomEdgeIds]);
   const { displayStoredHanzi } = useLearningPreferences();
   const hanziFont =
     '"Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
@@ -411,19 +415,23 @@ export function GraphCanvas({
               (e.sourceId === selectedId || e.targetId === selectedId);
             const dim = selectedId ? !involvesSelected : false;
             const color = e.type === "meaning" ? MEANING_COLOR : CHARACTER_COLOR;
+            const blooming = bloomSet.has(e.id);
             return (
               <line
                 key={e.id}
+                className={blooming ? "kg-edge-bloom" : undefined}
                 x1={a.x}
                 y1={a.y}
                 x2={b.x}
                 y2={b.y}
                 stroke={color}
-                strokeOpacity={dim ? 0.08 : 0.55}
+                strokeOpacity={dim && !blooming ? 0.08 : blooming ? 0.95 : 0.55}
                 strokeWidth={
-                  (involvesSelected
-                    ? 2.4
-                    : 1.2 + Math.min(e.weight, 4) * 0.3) / v.scale
+                  (blooming
+                    ? 3.2
+                    : involvesSelected
+                      ? 2.4
+                      : 1.2 + Math.min(e.weight, 4) * 0.3) / v.scale
                 }
                 strokeDasharray={
                   e.type === "character" ? "0" : `${4 / v.scale} ${3 / v.scale}`

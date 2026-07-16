@@ -7,6 +7,9 @@ import { apiJson } from "@/lib/api";
 import { useLearningPreferences } from "@/contexts/LearningPreferencesContext";
 import { pinyinFromEntry, jyutpingFromEntry } from "@/lib/word-display";
 import { strokeAnimatedUrl } from "@/lib/strokes";
+import { connectionStory } from "@/lib/kg";
+import { markFirstWorldStep } from "@/lib/first-world";
+import type { KgEdge, KgNode } from "@/lib/types";
 import { StrokeButton } from "./StrokeButton";
 import { WordHead } from "./WordHead";
 
@@ -48,12 +51,14 @@ export function WordPanel({ selection, onClose, className = "" }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<"idle" | "saving" | "ok" | "err">("idle");
   const [graphed, setGraphed] = useState<"idle" | "saving" | "ok" | "err">("idle");
+  const [bloomNote, setBloomNote] = useState<string | null>(null);
   const [aiExplain, setAiExplain] = useState<AiExplain | null>(null);
 
   useEffect(() => {
     setData(null);
     setAdded("idle");
     setGraphed("idle");
+    setBloomNote(null);
     setAiExplain(null);
     setError(null);
     if (!selection) return;
@@ -97,8 +102,13 @@ export function WordPanel({ selection, onClose, className = "" }: Props) {
   const onAddToGraph = useCallback(async () => {
     if (!selection || !primaryEntry) return;
     setGraphed("saving");
+    setBloomNote(null);
     try {
-      await apiJson("/api/kg", {
+      const j = await apiJson<{
+        node: KgNode;
+        newEdges?: KgEdge[];
+        created: boolean;
+      }>("/api/kg", {
         method: "POST",
         json: {
           hanzi: primaryEntry.simplified || primaryEntry.traditional,
@@ -109,6 +119,11 @@ export function WordPanel({ selection, onClose, className = "" }: Props) {
         },
       });
       setGraphed("ok");
+      if (j.created) markFirstWorldStep("graph");
+      const fresh = j.newEdges ?? [];
+      if (fresh.length > 0) {
+        setBloomNote(connectionStory(fresh[0], { fromHanzi: j.node.hanzi }));
+      }
     } catch { setGraphed("err"); }
   }, [selection, primaryEntry]);
 
@@ -168,6 +183,30 @@ export function WordPanel({ selection, onClose, className = "" }: Props) {
 
       {data && (
         <>
+          {data.characters.length > 0 && (
+            <div>
+              <div className="label mb-1">Stroke order</div>
+              <div className="flex flex-wrap gap-3">
+                {data.characters.map((ch) => {
+                  const strokeChar = displayHanzi(ch.char);
+                  const strokeUrl = strokeAnimatedUrl(strokeChar);
+                  return strokeUrl ? (
+                    <StrokeButton
+                      key={`${preferences.script}-${selection.word}-${strokeChar}-${strokeUrl}`}
+                      url={strokeUrl}
+                      char={strokeChar}
+                      autoPlay
+                    />
+                  ) : (
+                    <div key={ch.char} className="flex items-center justify-center rounded-md border border-ink/10 p-2">
+                      <div className="hanzi text-2xl">{strokeChar}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div>
             <div className="label mb-1">Definition</div>
             {data.entries.length === 0 ? (
@@ -191,29 +230,6 @@ export function WordPanel({ selection, onClose, className = "" }: Props) {
               <ul className="list-disc pl-5 text-sm text-ink/80">
                 {examples.slice(0, 4).map((ex, i) => <li key={i}>{ex}</li>)}
               </ul>
-            </div>
-          )}
-
-          {data.characters.length > 0 && (
-            <div>
-              <div className="label mb-1">Stroke order</div>
-              <div className="flex flex-wrap gap-3">
-                {data.characters.map((ch) => {
-                  const strokeChar = displayHanzi(ch.char);
-                  const strokeUrl = strokeAnimatedUrl(strokeChar);
-                  return strokeUrl ? (
-                    <StrokeButton
-                      key={`${preferences.script}-${strokeChar}-${strokeUrl}`}
-                      url={strokeUrl}
-                      char={strokeChar}
-                    />
-                  ) : (
-                    <div key={ch.char} className="flex items-center justify-center rounded-md border border-ink/10 p-2">
-                      <div className="hanzi text-2xl">{strokeChar}</div>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
           )}
 
@@ -266,6 +282,11 @@ export function WordPanel({ selection, onClose, className = "" }: Props) {
                 >
                   {graphed === "ok" ? "In knowledge graph ✓" : graphed === "saving" ? "Linking…" : graphed === "err" ? "Retry" : "+ Add to knowledge graph"}
                 </button>
+                {bloomNote && (
+                  <p className="w-full text-sm text-accent" role="status">
+                    {bloomNote}
+                  </p>
+                )}
               </>
             ) : (
               <button

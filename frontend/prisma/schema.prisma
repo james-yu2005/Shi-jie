@@ -97,6 +97,7 @@ model DailyGame {
   targetDesc     String?
   difficulty     String?
   targetElements Json?    // array of key elements cached after first attempt
+  phraseBank     Json?    // easy-mode vocab chips: [{hanzi, pinyin, jyutping, definition}]
   attempts       Json     @default("[]") // array of {prompt, score, feedback, …}
   attemptsUsed   Int      @default(0)
   solved         Boolean  @default(false)

@@ -9,7 +9,7 @@ import {
   imageForDay,
   isLegacyDailyImageUrl,
 } from "@/lib/daily";
-import type { GameAttempt } from "@/lib/types";
+import type { GameAttempt, VocabChip } from "@/lib/types";
 
 const PatchBody = z.object({
   difficulty: z.enum(["easy", "medium", "hard"]),
@@ -74,6 +74,10 @@ export const GET = withAuth(async (user) => {
       data: { imageUrl },
     });
   }
+  const phraseBank = Array.isArray(game.phraseBank)
+    ? (game.phraseBank as VocabChip[])
+    : null;
+
   return NextResponse.json({
     game: {
       id: game.id,
@@ -87,6 +91,7 @@ export const GET = withAuth(async (user) => {
       solved: game.solved,
       maxAttempts: DAILY_MAX_ATTEMPTS,
       difficulty: game.difficulty ?? "easy",
+      phraseBank,
     },
   });
 });

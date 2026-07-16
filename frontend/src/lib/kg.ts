@@ -110,3 +110,21 @@ export function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((v): v is string => typeof v === "string");
 }
+
+/** One-line learner-friendly story for a new connection. */
+export function connectionStory(
+  edge: Pick<KgEdge, "type" | "reason">,
+  opts?: { fromHanzi?: string; toHanzi?: string },
+): string {
+  const pair =
+    opts?.fromHanzi && opts?.toHanzi
+      ? `${opts.fromHanzi} ↔ ${opts.toHanzi}: `
+      : "";
+  if (edge.type === "character") {
+    // reason looks like "Share radical 扌 · 手"
+    const radical = edge.reason.replace(/^Share radical\s+/i, "").trim();
+    return `${pair}Both share ${radical} — a character / radical link.`;
+  }
+  const tag = edge.reason.replace(/^Both relate to\s+/i, "").trim();
+  return `${pair}Both relate to “${tag}” — a meaning link.`;
+}

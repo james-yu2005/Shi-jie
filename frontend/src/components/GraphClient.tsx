@@ -1,7 +1,9 @@
 "use client";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { KgEdge, KgNode } from "@/lib/types";
 import { apiJson } from "@/lib/api";
+import { connectionStory } from "@/lib/kg";
+import { markFirstWorldStep } from "@/lib/first-world";
 import { GraphCanvas } from "./GraphCanvas";
 import { GraphNodePanel } from "./GraphNodePanel";
 import { GraphQuiz } from "./GraphQuiz";
@@ -21,6 +23,7 @@ type Props = {
 type AddResponse = {
   node: KgNode;
   edges: KgEdge[];
+  newEdges?: KgEdge[];
   created: boolean;
 };
 
@@ -35,6 +38,41 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
   const [addError, setAddError] = useState<string | null>(null);
   const [rebuilding, setRebuilding] = useState(false);
   const [rebuildMsg, setRebuildMsg] = useState<string | null>(null);
+  const [bloomEdgeIds, setBloomEdgeIds] = useState<string[]>([]);
+  const [bloomStory, setBloomStory] = useState<string | null>(null);
+  const bloomTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerBloom = useCallback(
+    (newEdges: KgEdge[], node: KgNode, allNodes: KgNode[]) => {
+      if (newEdges.length === 0) return;
+      if (bloomTimer.current) clearTimeout(bloomTimer.current);
+      setBloomEdgeIds(newEdges.map((e) => e.id));
+      const first = newEdges[0];
+      const otherId =
+        first.sourceId === node.id ? first.targetId : first.sourceId;
+      const other = allNodes.find((n) => n.id === otherId);
+      const story = connectionStory(first, {
+        fromHanzi: node.hanzi,
+        toHanzi: other?.hanzi,
+      });
+      const extra =
+        newEdges.length > 1
+          ? ` (+${newEdges.length - 1} more link${newEdges.length === 2 ? "" : "s"})`
+          : "";
+      setBloomStory(`${story}${extra}`);
+      bloomTimer.current = setTimeout(() => {
+        setBloomEdgeIds([]);
+        setBloomStory(null);
+      }, 2800);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (bloomTimer.current) clearTimeout(bloomTimer.current);
+    };
+  }, []);
 
   const mergeAddResponse = useCallback(
     (data: AddResponse) => {
@@ -64,13 +102,21 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
         });
         mergeAddResponse(j);
         setSelectedId(j.node.id);
+        if (j.created) markFirstWorldStep("graph");
+        const fresh = j.newEdges ?? [];
+        if (fresh.length > 0) {
+          const nextNodes = nodes.some((n) => n.id === j.node.id)
+            ? nodes
+            : [...nodes, j.node];
+          triggerBloom(fresh, j.node, nextNodes);
+        }
       } catch (e) {
         setAddError(String(e));
       } finally {
         setAdding(false);
       }
     },
-    [mergeAddResponse],
+    [mergeAddResponse, triggerBloom, nodes],
   );
 
   const onAddFromInput = useCallback(async () => {
@@ -221,6 +267,16 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
               <div className="text-sm text-red-600">{addError}</div>
             )}
 
+            {bloomStory && (
+              <div
+                className="rounded-lg border border-accent/25 bg-accent/[0.06] px-3 py-2 text-sm text-ink/90"
+                role="status"
+              >
+                <span className="font-medium text-accent">New connection · </span>
+                {bloomStory}
+              </div>
+            )}
+
             <GraphCanvas
               nodes={nodes}
               edges={edges}
@@ -228,6 +284,7 @@ export function GraphClient({ initialNodes, initialEdges }: Props) {
               showCharacter={filters.character}
               selectedId={selectedId}
               onSelect={setSelectedId}
+              bloomEdgeIds={bloomEdgeIds}
             />
 
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-ink/70">

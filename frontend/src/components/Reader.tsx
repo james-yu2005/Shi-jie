@@ -15,6 +15,7 @@ import {
 import { countHanzi, TRANSLATE_HANZI_LIMIT } from "@/lib/chinese";
 import { prefersFinePointer } from "@/lib/pointer";
 import { resolveWordPanelGloss } from "@/lib/word-gloss";
+import { markFirstWorldStep } from "@/lib/first-world";
 import { PageHeader } from "./PageHeader";
 import { MobileSheet } from "./MobileSheet";
 import { SiteGuide } from "./SiteGuide";
@@ -59,6 +60,7 @@ export function Reader({ initialText }: { initialText?: string }) {
   const [playingSentence, setPlayingSentence] = useState<number | null>(null);
   const [finePointer, setFinePointer] = useState(true);
   const [sampleLoading, setSampleLoading] = useState(false);
+  const fromSampleRef = useRef(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const tokens = readResult?.tokens ?? null;
@@ -118,6 +120,7 @@ export function Reader({ initialText }: { initialText?: string }) {
         throw new Error(body.error ?? "Could not generate sample");
       }
       setText(body.text);
+      fromSampleRef.current = true;
       setReadResult(null);
       setSelected(null);
       setActiveLink(null);
@@ -161,9 +164,17 @@ export function Reader({ initialText }: { initialText?: string }) {
         const seg = (await fallback.json()) as { tokens: Token[] };
         setReadResult({ tokens: seg.tokens, sentences: [] });
         setError("Translation unavailable — showing segmentation only.");
+        if (fromSampleRef.current) {
+          markFirstWorldStep("sample");
+          fromSampleRef.current = false;
+        }
         return;
       }
       setReadResult((await res.json()) as ReaderReadResult);
+      if (fromSampleRef.current) {
+        markFirstWorldStep("sample");
+        fromSampleRef.current = false;
+      }
     } catch (e) {
       setError(String(e));
     } finally {

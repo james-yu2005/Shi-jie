@@ -56,9 +56,11 @@ export const POST = withAuth(async (user, req) => {
         OR: [{ sourceId: existing.id }, { targetId: existing.id }],
       },
     });
+    const clientEdges = edges.map(edgeToClient);
     return NextResponse.json({
       node: nodeToClient(existing),
-      edges: edges.map(edgeToClient),
+      edges: clientEdges,
+      newEdges: [],
       created: false,
     });
   }
@@ -143,16 +145,25 @@ export const POST = withAuth(async (user, req) => {
     });
   }
 
-  const newEdges = await prisma.kgEdge.findMany({
+  const linkedEdges = await prisma.kgEdge.findMany({
     where: {
       userId: user.id,
       OR: [{ sourceId: created.id }, { targetId: created.id }],
     },
   });
+  const clientEdges = linkedEdges.map(edgeToClient);
+  // Freshly derived edges for this add (Connection Bloom).
+  const newEdgeKeys = new Set(
+    derived.map((d) => [d.sourceId, d.targetId, d.type].join(":")),
+  );
+  const newEdges = clientEdges.filter((e) =>
+    newEdgeKeys.has([e.sourceId, e.targetId, e.type].join(":")),
+  );
 
   return NextResponse.json({
     node: nodeToClient(created),
-    edges: newEdges.map(edgeToClient),
+    edges: clientEdges,
+    newEdges,
     created: true,
   });
 });
