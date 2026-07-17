@@ -11,7 +11,6 @@ import type {
 import { apiJson, swrFetcher } from "@/lib/api";
 import { DAILY_EXAMPLE } from "@/lib/daily";
 import { markFirstWorldStep } from "@/lib/first-world";
-import { HeatmapCalendar } from "./HeatmapCalendar";
 import { PageHeader } from "./PageHeader";
 import { RomanizationLines } from "./WordHead";
 import { Hanzi } from "./Hanzi";
@@ -60,7 +59,6 @@ export function DailyClient() {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<DailyDifficulty>("easy");
-  const [showHistory, setShowHistory] = useState(false);
   const [phraseBank, setPhraseBank] = useState<VocabChip[] | null>(null);
   const [bankLoading, setBankLoading] = useState(false);
   const [bankError, setBankError] = useState<string | null>(null);
@@ -218,8 +216,7 @@ export function DailyClient() {
   const finished = game.solved || remaining <= 0;
   const difficultyLocked = game.attemptsUsed > 0;
   const showPhraseBank = (difficulty === "easy" || difficulty === "medium") && !finished;
-  const visibleBank =
-    (phraseBank ?? []).slice(0, difficulty === "medium" ? 3 : 6);
+  const visibleBank = (phraseBank ?? []).slice(0, 3);
   const statusLabel = finished
     ? game.solved ? "solved" : "out of attempts"
     : `${remaining} attempt${remaining === 1 ? "" : "s"} left`;
@@ -270,7 +267,7 @@ export function DailyClient() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:-mx-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.35fr)] lg:gap-8 xl:-mx-8">
         <div className="overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm lg:sticky lg:top-[var(--header-offset)] lg:self-start">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -282,7 +279,7 @@ export function DailyClient() {
           />
         </div>
 
-        <div className="space-y-4 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto lg:pr-2">
+        <div className="space-y-4 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-1">
           <div className="card">
             <div className="mb-2 flex items-center justify-between">
               <span className="label">Your description</span>
@@ -292,7 +289,7 @@ export function DailyClient() {
               </span>
             </div>
             <textarea
-              className="textarea hanzi min-h-[100px] text-base"
+              className="textarea hanzi min-h-[140px] text-base sm:min-h-[160px]"
               placeholder={
                 showPhraseBank
                   ? "Tap words below, or type your own…"
@@ -305,10 +302,6 @@ export function DailyClient() {
 
             {showPhraseBank && (
               <div className="mt-3 space-y-2 phrase-bank-enter">
-                <div className="label">
-                  Phrase bank — tap to build
-                  {difficulty === "medium" ? " (fewer clues)" : ""}
-                </div>
                 {bankLoading && (
                   <p className="text-sm text-ink/60">Loading words from today’s image…</p>
                 )}
@@ -392,30 +385,6 @@ export function DailyClient() {
           )}
         </div>
       </div>
-
-      {/* Streak & history */}
-      {stats && (
-        <div className="card space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="label">Activity</div>
-              {stats.streak > 0 && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                  🔥 {stats.streak}-day streak
-                </span>
-              )}
-            </div>
-            <button
-              className="btn-ghost text-xs"
-              onClick={() => setShowHistory((v) => !v)}
-            >
-              {showHistory ? "Hide" : "Show"} calendar
-            </button>
-          </div>
-
-          {showHistory && <HeatmapCalendar history={stats.history} />}
-        </div>
-      )}
     </div>
   );
 }

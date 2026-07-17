@@ -633,17 +633,7 @@ export function Reader({ initialText }: { initialText?: string }) {
           )}
 
           {!tokens && (
-            <div className="space-y-4">
-              <div className="subtle-card text-sm text-ink/70">
-                Paste up to {TRANSLATE_HANZI_LIMIT} Chinese characters and press <b>Read</b>. Each sentence has a{" "}
-                <b>🔊</b> button to hear it aloud.
-                {!finePointer && (
-                  <>
-                    {" "}
-                    Tap a word to highlight its English match; tap <b>Look up word</b> for the dictionary.
-                  </>
-                )}
-              </div>
+            <div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {NEXT_STEPS.map((s) => (
                   <Link key={s.href} href={s.href} className="card group transition hover:-translate-y-0.5 hover:shadow-md">

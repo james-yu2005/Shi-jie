@@ -32,25 +32,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
-  /* Soft ink-wash atmosphere — not flat paper */
-  background-color: var(--paper);
-  background-image:
-    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(192, 57, 43, 0.1), transparent 55%),
-    radial-gradient(ellipse 70% 45% at 95% 5%, rgba(44, 125, 160, 0.11), transparent 50%),
-    radial-gradient(ellipse 60% 40% at 50% 110%, rgba(26, 26, 26, 0.04), transparent 55%),
-    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
-  background-attachment: fixed;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  z-index: -1;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 14% 28%, rgba(192, 57, 43, 0.07), transparent 25rem),
-    radial-gradient(circle at 88% 68%, rgba(44, 125, 160, 0.08), transparent 28rem);
+  background: var(--paper);
 }
 
 ::selection {
@@ -84,7 +66,7 @@ body::before {
 
 .hanzi-token {
   border-bottom: 1px dashed transparent;
-  padding: 0.125rem 0.25rem;
+  padding: 0.125rem;
   margin: -0.125rem -0.125rem;
   border-radius: 2px;
   cursor: pointer;
@@ -220,8 +202,8 @@ body::before {
 
 .english-token {
   border-radius: 3px;
-  padding: 0.125rem 0.25rem;
-  margin: -0.125rem 0;
+  padding: 0.125rem;
+  margin: -0.125rem;
   transition: background 80ms ease, box-shadow 80ms ease;
   cursor: pointer;
 }

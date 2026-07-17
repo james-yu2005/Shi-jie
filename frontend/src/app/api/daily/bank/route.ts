@@ -55,7 +55,7 @@ export const POST = withAuth(async (user, req) => {
   const cached = asPhraseBank(game.phraseBank);
   if (cached && cached.length >= 3 && game.targetDesc) {
     return NextResponse.json({
-      phraseBank: cached.slice(0, difficulty === "medium" ? 3 : 6),
+      phraseBank: cached.slice(0, 3),
     });
   }
 
@@ -66,7 +66,7 @@ export const POST = withAuth(async (user, req) => {
 
   let result: PrepareResult;
   try {
-    // Always prepare the full (easy-sized) bank; the client trims for medium.
+    // Easy and medium intentionally use the same three-word clue bank.
     result = await backendFetch<PrepareResult>("/daily/prepare", {
       method: "POST",
       json: {
@@ -85,7 +85,7 @@ export const POST = withAuth(async (user, req) => {
     );
   }
 
-  const phraseBank = (asPhraseBank(result.phrase_bank) ?? []).slice(0, 6);
+  const phraseBank = (asPhraseBank(result.phrase_bank) ?? []).slice(0, 3);
   if (phraseBank.length < 3 || !result.target_desc) {
     console.error("Daily phrase bank preparation returned no image-derived words");
     return NextResponse.json(
@@ -108,9 +108,6 @@ export const POST = withAuth(async (user, req) => {
   });
 
   return NextResponse.json({
-    phraseBank: (asPhraseBank(updated.phraseBank) ?? phraseBank).slice(
-      0,
-      difficulty === "medium" ? 3 : 6,
-    ),
+    phraseBank: (asPhraseBank(updated.phraseBank) ?? phraseBank).slice(0, 3),
   });
 });
