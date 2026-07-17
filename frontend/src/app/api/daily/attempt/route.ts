@@ -84,8 +84,8 @@ export const POST = withAuth(async (user, req) => {
   // targetElements is a nullable Json column: keep the cached value, else use
   // the freshly graded elements, else store SQL NULL.
   const nextTargetElements: Prisma.NullableJsonNullValueInput | Prisma.InputJsonValue =
-    Array.isArray(game.targetElements)
-      ? (game.targetElements as Prisma.InputJsonValue)
+    targetElements.length > 0
+      ? (targetElements as Prisma.InputJsonValue)
       : (result.target_elements ?? Prisma.DbNull);
 
   const updated = await prisma.dailyGame.update({

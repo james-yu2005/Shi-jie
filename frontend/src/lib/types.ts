@@ -93,7 +93,6 @@ export type DailyGame = {
   id: string;
   dayKey: string;
   imageUrl: string;
-  targetDesc: string | null;
   attempts: GameAttempt[];
   attemptsUsed: number;
   solved: boolean;

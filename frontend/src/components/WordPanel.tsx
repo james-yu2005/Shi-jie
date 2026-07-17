@@ -7,9 +7,7 @@ import { apiJson } from "@/lib/api";
 import { useLearningPreferences } from "@/contexts/LearningPreferencesContext";
 import { pinyinFromEntry, jyutpingFromEntry } from "@/lib/word-display";
 import { strokeAnimatedUrl } from "@/lib/strokes";
-import { connectionStory } from "@/lib/kg";
 import { markFirstWorldStep } from "@/lib/first-world";
-import type { KgEdge, KgNode } from "@/lib/types";
 import { StrokeButton } from "./StrokeButton";
 import { WordHead } from "./WordHead";
 
@@ -51,14 +49,12 @@ export function WordPanel({ selection, onClose, className = "" }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<"idle" | "saving" | "ok" | "err">("idle");
   const [graphed, setGraphed] = useState<"idle" | "saving" | "ok" | "err">("idle");
-  const [bloomNote, setBloomNote] = useState<string | null>(null);
   const [aiExplain, setAiExplain] = useState<AiExplain | null>(null);
 
   useEffect(() => {
     setData(null);
     setAdded("idle");
     setGraphed("idle");
-    setBloomNote(null);
     setAiExplain(null);
     setError(null);
     if (!selection) return;
@@ -102,11 +98,8 @@ export function WordPanel({ selection, onClose, className = "" }: Props) {
   const onAddToGraph = useCallback(async () => {
     if (!selection || !primaryEntry) return;
     setGraphed("saving");
-    setBloomNote(null);
     try {
       const j = await apiJson<{
-        node: KgNode;
-        newEdges?: KgEdge[];
         created: boolean;
       }>("/api/kg", {
         method: "POST",
@@ -120,10 +113,6 @@ export function WordPanel({ selection, onClose, className = "" }: Props) {
       });
       setGraphed("ok");
       if (j.created) markFirstWorldStep("graph");
-      const fresh = j.newEdges ?? [];
-      if (fresh.length > 0) {
-        setBloomNote(connectionStory(fresh[0], { fromHanzi: j.node.hanzi }));
-      }
     } catch { setGraphed("err"); }
   }, [selection, primaryEntry]);
 
@@ -282,11 +271,6 @@ export function WordPanel({ selection, onClose, className = "" }: Props) {
                 >
                   {graphed === "ok" ? "In knowledge graph ✓" : graphed === "saving" ? "Linking…" : graphed === "err" ? "Retry" : "+ Add to knowledge graph"}
                 </button>
-                {bloomNote && (
-                  <p className="w-full text-sm text-accent" role="status">
-                    {bloomNote}
-                  </p>
-                )}
               </>
             ) : (
               <button

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { backendFetch } from "@/lib/backend";
@@ -13,13 +14,22 @@ type PrepareResult = {
   phrase_bank?: VocabChip[];
 };
 
+const Body = z.object({
+  difficulty: z.enum(["easy", "medium", "hard"]),
+});
+
 function asPhraseBank(value: unknown): VocabChip[] | null {
   if (!Array.isArray(value) || value.length === 0) return null;
   return value as VocabChip[];
 }
 
 /** POST /api/daily/bank — ensure target desc + return/cache phrase bank (easy/medium). */
-export const POST = withAuth(async (user) => {
+export const POST = withAuth(async (user, req) => {
+  const parsed = Body.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Choose a valid difficulty and retry." }, { status: 400 });
+  }
+
   const key = dayKey();
   const game = await prisma.dailyGame.findUnique({
     where: { userId_dayKey: { userId: user.id, dayKey: key } },
@@ -32,13 +42,21 @@ export const POST = withAuth(async (user) => {
   }
 
   const difficulty = game.difficulty ?? "easy";
-  if (difficulty === "hard") {
-    return NextResponse.json({ phraseBank: [], targetDesc: game.targetDesc });
+  if (parsed.data.difficulty !== difficulty) {
+    return NextResponse.json(
+      { error: "Difficulty changed while loading. Please retry." },
+      { status: 409 },
+    );
+  }
+  if (difficulty === "hard" || game.attemptsUsed > 0) {
+    return NextResponse.json({ phraseBank: [] });
   }
 
   const cached = asPhraseBank(game.phraseBank);
-  if (cached && game.targetDesc) {
-    return NextResponse.json({ phraseBank: cached, targetDesc: game.targetDesc });
+  if (cached && cached.length >= 3 && game.targetDesc) {
+    return NextResponse.json({
+      phraseBank: cached.slice(0, difficulty === "medium" ? 3 : 6),
+    });
   }
 
   const prefs = await getUserPreferences(user.id);
@@ -60,13 +78,24 @@ export const POST = withAuth(async (user) => {
       },
     });
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 502 });
+    console.error("Daily phrase bank preparation failed", e);
+    return NextResponse.json(
+      { error: "The image phrase service is temporarily unavailable. Please retry." },
+      { status: 502 },
+    );
   }
 
-  const phraseBank = asPhraseBank(result.phrase_bank) ?? [];
+  const phraseBank = (asPhraseBank(result.phrase_bank) ?? []).slice(0, 6);
+  if (phraseBank.length < 3 || !result.target_desc) {
+    console.error("Daily phrase bank preparation returned no image-derived words");
+    return NextResponse.json(
+      { error: "No phrase suggestions were generated for this image. Please retry." },
+      { status: 502 },
+    );
+  }
   const nextTargetElements: Prisma.NullableJsonNullValueInput | Prisma.InputJsonValue =
-    Array.isArray(game.targetElements)
-      ? (game.targetElements as Prisma.InputJsonValue)
+    targetElements.length > 0
+      ? (targetElements as Prisma.InputJsonValue)
       : (result.target_elements ?? Prisma.DbNull);
 
   const updated = await prisma.dailyGame.update({
@@ -79,7 +108,9 @@ export const POST = withAuth(async (user) => {
   });
 
   return NextResponse.json({
-    phraseBank: asPhraseBank(updated.phraseBank) ?? phraseBank,
-    targetDesc: updated.targetDesc,
+    phraseBank: (asPhraseBank(updated.phraseBank) ?? phraseBank).slice(
+      0,
+      difficulty === "medium" ? 3 : 6,
+    ),
   });
 });

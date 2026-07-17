@@ -64,44 +64,76 @@ export function DailyClient() {
   const [phraseBank, setPhraseBank] = useState<VocabChip[] | null>(null);
   const [bankLoading, setBankLoading] = useState(false);
   const [bankError, setBankError] = useState<string | null>(null);
+  const [changingDifficulty, setChangingDifficulty] = useState(false);
+  const [bankReloadKey, setBankReloadKey] = useState(0);
 
   useEffect(() => {
     if (game) setDifficulty(game.difficulty ?? "easy");
   }, [game?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (game?.phraseBank?.length) setPhraseBank(game.phraseBank);
+    setPhraseBank(game?.phraseBank?.length ? game.phraseBank : null);
+    setBankError(null);
   }, [game?.id, game?.phraseBank]);
 
   // Prefetch phrase bank on easy/medium before the first attempt. Hard stays blank.
   useEffect(() => {
-    if (!game || difficulty === "hard" || game.attemptsUsed > 0) return;
-    if (phraseBank?.length) return;
+    if (
+      !game ||
+      difficulty === "hard" ||
+      game.attemptsUsed > 0 ||
+      changingDifficulty ||
+      difficulty !== (game.difficulty ?? "easy") ||
+      game.phraseBank?.length ||
+      phraseBank?.length
+    ) return;
     let cancelled = false;
-    setBankLoading(true);
-    setBankError(null);
-    apiJson<{ phraseBank: VocabChip[] }>("/api/daily/bank", { method: "POST" })
-      .then((j) => {
-        if (cancelled) return;
-        setPhraseBank(j.phraseBank ?? []);
-        void mutate(
-          (prev) =>
-            prev
-              ? { game: { ...prev.game, phraseBank: j.phraseBank ?? [] } }
-              : prev,
-          { revalidate: false },
-        );
-      })
-      .catch((e) => {
-        if (!cancelled) setBankError(String(e));
-      })
-      .finally(() => {
+    void (async () => {
+      setBankLoading(true);
+      setBankError(null);
+      try {
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try {
+            const j = await apiJson<{ phraseBank: VocabChip[] }>("/api/daily/bank", {
+              method: "POST",
+              json: { difficulty },
+            });
+            if (cancelled) return;
+            setPhraseBank(j.phraseBank ?? []);
+            await mutate(
+              (prev) =>
+                prev
+                  ? { game: { ...prev.game, phraseBank: j.phraseBank ?? [] } }
+                  : prev,
+              { revalidate: false },
+            );
+            return;
+          } catch {
+            if (attempt === 0) {
+              await new Promise((resolve) => setTimeout(resolve, 650));
+              if (cancelled) return;
+              continue;
+            }
+            if (!cancelled) {
+              setBankError("The image phrase bank is unavailable right now.");
+            }
+          }
+        }
+      } finally {
         if (!cancelled) setBankLoading(false);
-      });
+      }
+    })();
     return () => {
       cancelled = true;
     };
-  }, [game?.id, difficulty, game?.attemptsUsed, phraseBank?.length, mutate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [
+    game,
+    difficulty,
+    phraseBank?.length,
+    changingDifficulty,
+    bankReloadKey,
+    mutate,
+  ]);
 
   const submit = useCallback(async () => {
     if (!game || !text.trim()) return;
@@ -145,6 +177,8 @@ export function DailyClient() {
       if (!game || game.attemptsUsed > 0) return;
       const previous = difficulty;
       setDifficulty(d);
+      setChangingDifficulty(true);
+      setBankError(null);
       try {
         const j = await apiJson<{ difficulty: DailyDifficulty }>("/api/daily", {
           method: "PATCH",
@@ -157,6 +191,8 @@ export function DailyClient() {
       } catch (e) {
         setDifficulty(previous);
         setError(String(e));
+      } finally {
+        setChangingDifficulty(false);
       }
     },
     [game, difficulty, mutate],
@@ -183,7 +219,7 @@ export function DailyClient() {
   const difficultyLocked = game.attemptsUsed > 0;
   const showPhraseBank = (difficulty === "easy" || difficulty === "medium") && !finished;
   const visibleBank =
-    difficulty === "medium" ? (phraseBank ?? []).slice(0, 3) : (phraseBank ?? []);
+    (phraseBank ?? []).slice(0, difficulty === "medium" ? 3 : 6);
   const statusLabel = finished
     ? game.solved ? "solved" : "out of attempts"
     : `${remaining} attempt${remaining === 1 ? "" : "s"} left`;
@@ -219,7 +255,7 @@ export function DailyClient() {
                   key={d}
                   type="button"
                   onClick={() => chooseDifficulty(d)}
-                  disabled={difficultyLocked}
+                  disabled={difficultyLocked || changingDifficulty}
                   data-active={difficulty === d}
                   className={`${SEGMENT_BTN} flex-1 sm:flex-none`}
                 >
@@ -277,9 +313,19 @@ export function DailyClient() {
                   <p className="text-sm text-ink/60">Loading words from today’s image…</p>
                 )}
                 {bankError && (
-                  <p className="text-sm text-red-600">
-                    Couldn’t load phrase bank. You can still type freely.
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-ink/70">
+                    <span>{bankError} You can type freely or try again.</span>
+                    <button
+                      type="button"
+                      className="font-medium text-accent hover:underline"
+                      onClick={() => {
+                        setBankError(null);
+                        setBankReloadKey((key) => key + 1);
+                      }}
+                    >
+                      Retry
+                    </button>
+                  </div>
                 )}
                 {visibleBank.length > 0 && (
                   <div className="flex flex-wrap gap-2">

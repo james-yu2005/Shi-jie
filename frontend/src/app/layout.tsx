@@ -3,7 +3,6 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { Providers } from "./providers";
-import { FirstWorldChecklist } from "@/components/FirstWorldChecklist";
 import { FooterModelInfo } from "@/components/FooterModelInfo";
 import { HeaderNav } from "@/components/HeaderNav";
 import { UserMenu } from "@/components/UserMenu";
@@ -62,9 +61,7 @@ export default async function RootLayout({
             </div>
           </header>
 
-          <FirstWorldChecklist />
-
-          <main className="page-enter mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+          <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
             {children}
           </main>
 

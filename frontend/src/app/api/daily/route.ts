@@ -83,7 +83,6 @@ export const GET = withAuth(async (user) => {
       id: game.id,
       dayKey: game.dayKey,
       imageUrl: game.imageUrl,
-      targetDesc: game.targetDesc,
       attempts: Array.isArray(game.attempts)
         ? attemptsNewestFirst(game.attempts as GameAttempt[])
         : [],

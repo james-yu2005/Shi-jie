@@ -16,6 +16,21 @@ import { countHanzi, TRANSLATE_HANZI_LIMIT } from "@/lib/chinese";
 import { prefersFinePointer } from "@/lib/pointer";
 import { resolveWordPanelGloss } from "@/lib/word-gloss";
 import { markFirstWorldStep } from "@/lib/first-world";
+import {
+  addSavedSentence,
+  findSavedSentence,
+  loadReaderMemory,
+  READER_MEMORY_LIMIT,
+  removeSavedSentence,
+  saveReaderMemory,
+  sliceSentenceResult,
+  type SavedReaderSentence,
+} from "@/lib/reader-memory";
+import {
+  clearReaderSession,
+  loadReaderSession,
+  saveReaderSession,
+} from "@/lib/reader-session";
 import { PageHeader } from "./PageHeader";
 import { MobileSheet } from "./MobileSheet";
 import { SiteGuide } from "./SiteGuide";
@@ -60,6 +75,9 @@ export function Reader({ initialText }: { initialText?: string }) {
   const [playingSentence, setPlayingSentence] = useState<number | null>(null);
   const [finePointer, setFinePointer] = useState(true);
   const [sampleLoading, setSampleLoading] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [savedSentences, setSavedSentences] = useState<SavedReaderSentence[]>([]);
+  const [memoryNotice, setMemoryNotice] = useState<string | null>(null);
   const fromSampleRef = useRef(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,9 +93,41 @@ export function Reader({ initialText }: { initialText?: string }) {
   const overLimit = hanziCount > TRANSLATE_HANZI_LIMIT;
 
   useEffect(() => {
-    if (initialText && initialText !== text) setText(initialText);
+    const session = loadReaderSession();
+    setSavedSentences(loadReaderMemory());
+
+    if (initialText) {
+      setText(initialText);
+      if (session?.text === initialText && session.readResult) {
+        setReadResult(session.readResult);
+        setShowPinyin(session.showPinyin);
+        setShowTranslation(session.showTranslation);
+      }
+    } else if (session) {
+      setText(session.text);
+      setReadResult(session.readResult);
+      setShowPinyin(session.showPinyin);
+      setShowTranslation(session.showTranslation);
+    }
+    setSessionReady(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialText]);
+  }, []);
+
+  useEffect(() => {
+    if (!sessionReady) return;
+    if (initialText && initialText !== text) {
+      setText(initialText);
+      setReadResult(null);
+      setSelected(null);
+      setActiveLink(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialText, sessionReady]);
+
+  useEffect(() => {
+    if (!sessionReady) return;
+    saveReaderSession({ text, readResult, showPinyin, showTranslation });
+  }, [text, readResult, showPinyin, showTranslation, sessionReady]);
 
   useEffect(() => {
     setFinePointer(prefersFinePointer());
@@ -262,6 +312,56 @@ export function Reader({ initialText }: { initialText?: string }) {
     [tokens, displayHanzi, playAudio],
   );
 
+  const saveSentence = useCallback(
+    (sentenceIdx: number, indices: number[]) => {
+      if (!readResult || !tokens) return;
+      const chinese = chineseForIndices(tokens, indices, (t) => t).trim();
+      if (!chinese) return;
+      const english = (sentences[sentenceIdx]?.english ?? "").trim();
+      const sliced = sliceSentenceResult(readResult, sentenceIdx, indices);
+      if (!sliced) return;
+
+      const result = addSavedSentence(savedSentences, {
+        chinese,
+        english,
+        readResult: sliced,
+      });
+      if (!result.ok) {
+        setMemoryNotice(
+          result.reason === "full"
+            ? `Memory is full (${READER_MEMORY_LIMIT}/5). Remove one to save another.`
+            : "Already saved.",
+        );
+        return;
+      }
+      setSavedSentences(result.items);
+      saveReaderMemory(result.items);
+      setMemoryNotice("Sentence saved.");
+    },
+    [readResult, tokens, sentences, savedSentences],
+  );
+
+  const loadSavedSentence = useCallback((item: SavedReaderSentence) => {
+    setText(item.chinese);
+    setReadResult(item.readResult);
+    setSelected(null);
+    setActiveLink(null);
+    setError(null);
+    setPlayingSentence(null);
+    setMemoryNotice(null);
+    fromSampleRef.current = false;
+  }, []);
+
+  const deleteSavedSentence = useCallback(
+    (id: string) => {
+      const next = removeSavedSentence(savedSentences, id);
+      setSavedSentences(next);
+      saveReaderMemory(next);
+      setMemoryNotice(null);
+    },
+    [savedSentences],
+  );
+
   function renderToken(tok: Token, i: number, sentenceIdx: number) {
     if (!tok.is_hanzi) {
       if (tok.token === "\n") return <br key={i} />;
@@ -363,14 +463,62 @@ export function Reader({ initialText }: { initialText?: string }) {
                     setReadResult(null);
                     setSelected(null);
                     setError(null);
+                    setActiveLink(null);
+                    setMemoryNotice(null);
+                    clearReaderSession();
                   }}
                 >
                   Clear
                 </button>
               </div>
               {error && <span className="w-full text-sm text-red-600">{error}</span>}
+              {memoryNotice && (
+                <span className="w-full text-sm text-ink/60">{memoryNotice}</span>
+              )}
             </div>
           </div>
+
+          {savedSentences.length > 0 && (
+            <div className="card space-y-3">
+              <div className="flex items-baseline justify-between gap-2">
+                <h2 className="text-sm font-semibold text-ink">Saved translations</h2>
+                <span className="text-xs tabular-nums text-ink/50">
+                  {savedSentences.length} / {READER_MEMORY_LIMIT}
+                </span>
+              </div>
+              <ul className="space-y-2">
+                {savedSentences.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex flex-col gap-2 border-t border-ink/10 pt-2 first:border-t-0 first:pt-0 sm:flex-row sm:items-start sm:justify-between"
+                  >
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="hanzi text-sm leading-relaxed">{item.chinese}</p>
+                      {item.english && (
+                        <p className="text-sm text-ink/65">{item.english}</p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        className="btn-outline"
+                        onClick={() => loadSavedSentence(item)}
+                      >
+                        Load
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        onClick={() => deleteSavedSentence(item.id)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {tokens && (
             <>
@@ -406,6 +554,11 @@ export function Reader({ initialText }: { initialText?: string }) {
                   const isPlaying = playingSentence === sentenceIdx;
                   const isActive =
                     activeLink?.sentenceIdx === sentenceIdx;
+                  const chineseRaw = chineseForIndices(tokens, indices, (t) => t).trim();
+                  const englishRaw = (translation?.english ?? "").trim();
+                  const alreadySaved = Boolean(
+                    findSavedSentence(savedSentences, chineseRaw, englishRaw),
+                  );
 
                   return (
                     <div
@@ -417,15 +570,32 @@ export function Reader({ initialText }: { initialText?: string }) {
                         <div className="hanzi min-w-0 flex-1 text-base leading-loose">
                           {indices.map((i) => renderToken(tokens[i], i, sentenceIdx))}
                         </div>
-                        <button
-                          type="button"
-                          className="btn-outline shrink-0"
-                          onClick={() => playSentence(sentenceIdx, indices)}
-                          aria-label={`Listen to sentence ${sentenceIdx + 1}`}
-                          title={`Listen (${preferences.audio === "cantonese" ? "Cantonese" : "Mandarin"})`}
-                        >
-                          {isPlaying ? "🔊 …" : "🔊"}
-                        </button>
+                        <div className="flex shrink-0 flex-col gap-1.5">
+                          <button
+                            type="button"
+                            className="btn-outline"
+                            onClick={() => playSentence(sentenceIdx, indices)}
+                            aria-label={`Listen to sentence ${sentenceIdx + 1}`}
+                            title={`Listen (${preferences.audio === "cantonese" ? "Cantonese" : "Mandarin"})`}
+                          >
+                            {isPlaying ? "🔊 …" : "🔊"}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-ghost text-xs"
+                            onClick={() => saveSentence(sentenceIdx, indices)}
+                            disabled={alreadySaved}
+                            title={
+                              alreadySaved
+                                ? "Already saved"
+                                : savedSentences.length >= READER_MEMORY_LIMIT
+                                  ? `Memory full (${READER_MEMORY_LIMIT}/5)`
+                                  : "Save this translation"
+                            }
+                          >
+                            {alreadySaved ? "Saved" : "Save"}
+                          </button>
+                        </div>
                       </div>
 
                       {isActive && (
