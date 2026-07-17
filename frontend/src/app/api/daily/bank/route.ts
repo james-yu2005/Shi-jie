@@ -18,7 +18,7 @@ function asPhraseBank(value: unknown): VocabChip[] | null {
   return value as VocabChip[];
 }
 
-/** POST /api/daily/bank — ensure target desc + return/cache easy-mode phrase bank. */
+/** POST /api/daily/bank — ensure target desc + return/cache phrase bank (easy/medium). */
 export const POST = withAuth(async (user) => {
   const key = dayKey();
   const game = await prisma.dailyGame.findUnique({
@@ -29,6 +29,11 @@ export const POST = withAuth(async (user) => {
       { error: "no game yet — GET /api/daily first" },
       { status: 404 },
     );
+  }
+
+  const difficulty = game.difficulty ?? "easy";
+  if (difficulty === "hard") {
+    return NextResponse.json({ phraseBank: [], targetDesc: game.targetDesc });
   }
 
   const cached = asPhraseBank(game.phraseBank);
@@ -43,12 +48,14 @@ export const POST = withAuth(async (user) => {
 
   let result: PrepareResult;
   try {
+    // Always prepare the full (easy-sized) bank; the client trims for medium.
     result = await backendFetch<PrepareResult>("/daily/prepare", {
       method: "POST",
       json: {
         image_url: game.imageUrl,
         target_desc: game.targetDesc ?? null,
         target_elements: targetElements,
+        difficulty: "easy",
         ...backendLearningPrefs(prefs),
       },
     });

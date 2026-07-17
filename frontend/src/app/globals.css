@@ -30,6 +30,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+  /* Soft ink-wash atmosphere — not flat paper */
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(192, 57, 43, 0.07), transparent 55%),
+    radial-gradient(ellipse 70% 45% at 95% 5%, rgba(44, 125, 160, 0.08), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 50% 110%, rgba(26, 26, 26, 0.04), transparent 55%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  background-attachment: fixed;
 }
 
 ::selection {
@@ -89,10 +97,16 @@ body {
 
 .btn-primary {
   @apply btn bg-ink text-white hover:bg-black/80 active:scale-[0.98] disabled:opacity-40 disabled:hover:bg-ink;
+  transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 4px 14px rgba(26, 26, 26, 0.18);
 }
 
 .btn-outline {
   @apply btn border border-ink/15 bg-white hover:border-ink/30 hover:bg-ink/5 active:scale-[0.94] disabled:opacity-40 disabled:hover:bg-white;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
 }
 
 .btn-ghost {
@@ -111,7 +125,14 @@ body {
 
 /* ---------- surfaces ---------- */
 .card {
-  @apply rounded-xl border border-ink/10 bg-white p-3 shadow-sm sm:p-4;
+  @apply rounded-xl border border-ink/10 bg-white/90 p-3 shadow-sm sm:p-4;
+  backdrop-filter: blur(6px);
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+}
+
+.card:hover {
+  border-color: rgba(26, 26, 26, 0.14);
+  box-shadow: 0 8px 24px rgba(26, 26, 26, 0.06);
 }
 
 /* Larger tap area for checkbox/radio labels */
@@ -133,11 +154,30 @@ body {
   min-height: 44px;
   display: inline-flex;
   align-items: center;
+  position: relative;
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.35rem;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 220ms ease;
+  border-radius: 1px;
+}
+
+.nav-link:hover::after,
+.nav-link[data-active="true"]::after {
+  transform: scaleX(1);
 }
 
 .nav-link[data-active="true"] {
   @apply bg-ink/5 text-ink;
-  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 /* simple stroke animation: outlined glyph rotates through stroke colors */
@@ -257,5 +297,112 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .kg-edge-bloom {
     animation: none;
+  }
+}
+
+/* ---------- site-wide motion ---------- */
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: pageEnter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes brandInk {
+  0%,
+  100% {
+    color: var(--ink);
+  }
+  50% {
+    color: var(--accent);
+  }
+}
+
+.brand-mark:hover {
+  animation: brandInk 900ms ease;
+}
+
+@keyframes chipPop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.phrase-chip {
+  animation: chipPop 320ms ease both;
+}
+
+.phrase-bank-enter {
+  animation: pageEnter 360ms ease both;
+}
+
+@keyframes headerSheen {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.site-header {
+  background-image: linear-gradient(
+    110deg,
+    rgba(253, 250, 243, 0.92) 0%,
+    rgba(253, 250, 243, 0.88) 40%,
+    rgba(255, 255, 255, 0.55) 50%,
+    rgba(253, 250, 243, 0.88) 60%,
+    rgba(253, 250, 243, 0.92) 100%
+  );
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .site-header:hover {
+    animation: headerSheen 1.4s ease;
+  }
+}
+
+.hanzi-token {
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.hanzi-token:hover,
+.hanzi-token:active {
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter,
+  .phrase-chip,
+  .phrase-bank-enter,
+  .brand-mark:hover,
+  .site-header:hover {
+    animation: none;
+  }
+
+  .card,
+  .btn-primary,
+  .btn-outline,
+  .hanzi-token {
+    transition: none;
+  }
+
+  .card:hover {
+    transform: none;
+    box-shadow: none;
   }
 }

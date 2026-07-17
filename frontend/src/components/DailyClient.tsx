@@ -73,9 +73,9 @@ export function DailyClient() {
     if (game?.phraseBank?.length) setPhraseBank(game.phraseBank);
   }, [game?.id, game?.phraseBank]);
 
-  // Prefetch phrase bank on easy before the first attempt.
+  // Prefetch phrase bank on easy/medium before the first attempt. Hard stays blank.
   useEffect(() => {
-    if (!game || difficulty !== "easy" || game.attemptsUsed > 0) return;
+    if (!game || difficulty === "hard" || game.attemptsUsed > 0) return;
     if (phraseBank?.length) return;
     let cancelled = false;
     setBankLoading(true);
@@ -181,6 +181,9 @@ export function DailyClient() {
   const remaining = game.maxAttempts - game.attemptsUsed;
   const finished = game.solved || remaining <= 0;
   const difficultyLocked = game.attemptsUsed > 0;
+  const showPhraseBank = (difficulty === "easy" || difficulty === "medium") && !finished;
+  const visibleBank =
+    difficulty === "medium" ? (phraseBank ?? []).slice(0, 3) : (phraseBank ?? []);
   const statusLabel = finished
     ? game.solved ? "solved" : "out of attempts"
     : `${remaining} attempt${remaining === 1 ? "" : "s"} left`;
@@ -255,7 +258,7 @@ export function DailyClient() {
             <textarea
               className="textarea hanzi min-h-[100px] text-base"
               placeholder={
-                difficulty === "easy"
+                showPhraseBank
                   ? "Tap words below, or type your own…"
                   : "用中文描述这张图片…"
               }
@@ -264,9 +267,12 @@ export function DailyClient() {
               disabled={finished || submitting}
             />
 
-            {difficulty === "easy" && !finished && (
-              <div className="mt-3 space-y-2">
-                <div className="label">Phrase bank — tap to build</div>
+            {showPhraseBank && (
+              <div className="mt-3 space-y-2 phrase-bank-enter">
+                <div className="label">
+                  Phrase bank — tap to build
+                  {difficulty === "medium" ? " (fewer clues)" : ""}
+                </div>
                 {bankLoading && (
                   <p className="text-sm text-ink/60">Loading words from today’s image…</p>
                 )}
@@ -275,13 +281,14 @@ export function DailyClient() {
                     Couldn’t load phrase bank. You can still type freely.
                   </p>
                 )}
-                {phraseBank && phraseBank.length > 0 && (
+                {visibleBank.length > 0 && (
                   <div className="flex flex-wrap gap-2">
-                    {phraseBank.map((chip) => (
+                    {visibleBank.map((chip, i) => (
                       <button
                         key={chip.hanzi}
                         type="button"
-                        className="rounded-md border border-ink/15 bg-paper px-2.5 py-1.5 text-left transition hover:border-accent/40 hover:bg-accent/[0.06] disabled:opacity-40"
+                        className="phrase-chip rounded-md border border-ink/15 bg-paper px-2.5 py-1.5 text-left transition hover:border-accent/40 hover:bg-accent/[0.06] active:scale-95 disabled:opacity-40"
+                        style={{ animationDelay: `${i * 45}ms` }}
                         onClick={() => insertChip(chip.hanzi)}
                         disabled={submitting}
                         title={chip.definition}

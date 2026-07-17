@@ -32,14 +32,14 @@ export default async function RootLayout({
     <html lang="en">
       <body className="flex min-h-screen flex-col">
         <Providers>
-          <header className="sticky top-0 z-30 border-b border-ink/10 bg-paper/85 backdrop-blur">
+          <header className="site-header sticky top-0 z-30 border-b border-ink/10 bg-paper/85 backdrop-blur">
             <div className="mx-auto max-w-6xl px-4 sm:px-6">
               <div className="flex items-center justify-between gap-3 py-3">
                 <Link href="/" className="group flex shrink-0 items-baseline gap-2">
-                  <span className="hanzi serif text-2xl font-bold leading-none transition group-hover:text-accent">
+                  <span className="brand-mark hanzi serif text-2xl font-bold leading-none">
                     世界
                   </span>
-                  <span className="hidden text-sm text-ink/60 sm:inline">
+                  <span className="hidden text-sm text-ink/60 transition group-hover:text-ink/80 sm:inline">
                     Shìjiè
                   </span>
                 </Link>
@@ -64,7 +64,7 @@ export default async function RootLayout({
 
           <FirstWorldChecklist />
 
-          <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+          <main className="page-enter mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
             {children}
           </main>
 
