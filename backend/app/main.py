@@ -8,6 +8,7 @@ Exposes:
     POST /ai/translate         { text }              -> segmented + aligned English
     POST /ai/paragraph         { words: [..] }       -> chinese paragraph
     POST /daily/grade          { ... }               -> LangGraph image agent
+    POST /daily/prepare        { image_url, ... }    -> target desc + phrase bank
     POST /kg/analyze           { hanzi }             -> radicals + tags + pinyin
     POST /kg/connection        { word_a, word_b, edges } -> short explanation
     POST /kg/suggest           { focus, existing }   -> related word suggestions
@@ -22,7 +23,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, Literal, TypeVar
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
@@ -235,6 +236,28 @@ def daily_grade(req: DailyGradeRequest) -> dict[str, Any]:
         target_desc=req.target_desc,
         target_elements=req.target_elements,
         max_attempts=req.max_attempts,
+        difficulty=req.difficulty,
+        script=req.script,
+        locale=req.locale,
+    )
+
+
+class DailyPrepareRequest(LearningPrefs):
+    image_url: str = Field(..., min_length=1)
+    target_desc: str | None = None
+    target_elements: list[str] = Field(default_factory=list)
+    difficulty: Literal["easy", "medium", "hard"] = "easy"
+
+
+@app.post("/daily/prepare")
+def daily_prepare(req: DailyPrepareRequest) -> dict[str, Any]:
+    """Describe the image (if needed) and return a phrase bank for easy/medium."""
+    return run_agent(
+        "daily prepare",
+        image_describer.prepare,
+        image_url=req.image_url,
+        target_desc=req.target_desc,
+        target_elements=req.target_elements,
         difficulty=req.difficulty,
         script=req.script,
         locale=req.locale,

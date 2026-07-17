@@ -20,7 +20,7 @@ grade_attempt: compares the user's Chinese sentence against the target
 from __future__ import annotations
 
 import json
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
@@ -48,6 +48,7 @@ class GameState(TypedDict, total=False):
     hint: str
     reveal: str | None
     vocab_hints: list[dict]
+    phrase_bank: list[dict]
 
 # ---------- difficulty level -----
 _DIFFICULTY_RULES = {
@@ -78,13 +79,18 @@ def _describe_system(script: str, locale: str) -> str:
         f"You are a {tutor_role(locale)} building a description target for a guessing "
         "game. Look at the image and respond with strict JSON:\n"
         f'{{ "description_zh": "<1-2 short {script_name} sentences describing'
-        ' the main scene>", "elements": ["<main element 1>", "<main element 2>"] }\n'
+        ' the main scene>", "elements": ["<main element 1>", "<main element 2>"], '
+        '"phrase_bank": [{"hanzi": "<word from description_zh>", '
+        '"pinyin": "<Mandarin with tone marks>", "jyutping": "<Cantonese romanization>", '
+        '"definition": "<short English meaning>"}] }\n'
         "Focus on the BIG picture only — what is this place/thing and what stands "
         "out at a glance (e.g. restaurant, chairs, wooden furniture). "
         "Use 2-3 elements max: main subject, setting/type, and at most one obvious "
         "detail. Do NOT list decorative or secondary details (lighting style, "
         "glassware, window size, interior design adjectives) unless they are the "
-        "clear focal point of the image. Output ONLY the JSON."
+        "clear focal point of the image. Include 3-6 useful vocabulary items copied "
+        "directly from description_zh; do not include the complete sentence as an item. "
+        "Output ONLY the JSON."
     )
 
 def describe_image(state: GameState) -> GameState:
@@ -107,9 +113,11 @@ def describe_image(state: GameState) -> GameState:
     ]
     raw = vision_llm(0.2).invoke(msgs).content
     data = safe_json(raw)
+    description = str(data.get("description_zh", "") or "")
     return {
-        "target_desc": data.get("description_zh", ""),
+        "target_desc": description,
         "target_elements": data.get("elements", []),
+        "phrase_bank": _normalize_phrase_bank(data.get("phrase_bank"), description),
     }
 
 
@@ -142,6 +150,145 @@ def _grade_system(difficulty: str, locale: str) -> str:
     )
 
 
+def _vocab_candidates(target_desc: str) -> list[tuple[str, Any]]:
+    """Segment target description into learner-friendly vocab (prefer multi-char)."""
+    words = dct.segment(target_desc)
+    multi: list[tuple[str, Any]] = []
+    single: list[tuple[str, Any]] = []
+    seen: set[str] = set()
+    for w in words:
+        if w in seen or not any(dct.is_hanzi(c) for c in w):
+            continue
+        entries = dct.lookup(w)
+        if not entries:
+            continue
+        seen.add(w)
+        item = (w, entries[0])
+        if len(w) >= 2:
+            multi.append(item)
+        else:
+            single.append(item)
+    return multi + single
+
+
+def build_phrase_bank(
+    target_desc: str | None,
+    *,
+    difficulty: str = "easy",
+    locale: str = "mandarin",
+) -> list[dict]:
+    """Return vocab chips for easy/medium. Hard gets an empty bank."""
+    if not target_desc or difficulty == "hard":
+        return []
+    try:
+        candidates = _vocab_candidates(target_desc)
+    except FileNotFoundError:
+        # Production normally has CC-CEDICT, but local/dev installs may not.
+        return []
+    if not candidates:
+        return []
+    # Easy: fuller scaffold; medium: fewer clues; hard: none (handled above).
+    limit = 6 if difficulty == "easy" else 3
+    take = min(limit, len(candidates))
+    bank: list[dict] = []
+    for word, entry in candidates[:take]:
+        bank.append({
+            "hanzi": word,
+            "pinyin": dct.romanization_for(entry, "mandarin"),
+            "jyutping": entry.jyutping or "",
+            "definition": "; ".join(entry.definitions[:2]),
+        })
+    return bank
+
+
+def _normalize_phrase_bank(value: Any, target_desc: str) -> list[dict]:
+    if not isinstance(value, list):
+        return []
+    bank: list[dict] = []
+    seen: set[str] = set()
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        hanzi = str(item.get("hanzi", "")).strip()
+        if (
+            not hanzi
+            or hanzi in seen
+            or hanzi == target_desc
+            or hanzi not in target_desc
+            or not any(dct.is_hanzi(c) for c in hanzi)
+        ):
+            continue
+        bank.append({
+            "hanzi": hanzi,
+            "pinyin": str(item.get("pinyin", "")).strip(),
+            "jyutping": str(item.get("jyutping", "")).strip(),
+            "definition": str(item.get("definition", "")).strip(),
+        })
+        seen.add(hanzi)
+        if len(bank) == 6:
+            break
+    return bank
+
+
+def _generate_phrase_bank(target_desc: str, script: str, locale: str) -> list[dict]:
+    """Derive chips from the image description when dictionary data is unavailable."""
+    msgs = [
+        SystemMessage(
+            content=(
+                f"You are a {tutor_role(locale)} creating vocabulary support for a "
+                f"{script_label(script)} image-description exercise. Return strict JSON "
+                'with this shape: {"phrase_bank": [{"hanzi": "<word copied exactly from '
+                'the supplied description>", "pinyin": "<tone marks>", "jyutping": '
+                '"<Cantonese romanization>", "definition": "<short English meaning>"}]}. '
+                "Choose 3-6 useful words or short phrases. Never include the complete "
+                "description as an item. Output only JSON."
+            )
+        ),
+        HumanMessage(content=target_desc),
+    ]
+    data = safe_json(text_llm(0.0).invoke(msgs).content)
+    return _normalize_phrase_bank(data.get("phrase_bank"), target_desc)
+
+
+def prepare(
+    *,
+    image_url: str,
+    target_desc: str | None = None,
+    target_elements: list[str] | None = None,
+    difficulty: str = "easy",
+    script: str = "simplified",
+    locale: str = "mandarin",
+) -> dict:
+    """Ensure a target description exists, then build a phrase bank (no grading)."""
+    if difficulty == "hard":
+        return {
+            "target_desc": target_desc or "",
+            "target_elements": target_elements or [],
+            "phrase_bank": [],
+        }
+    state: GameState = {
+        "image_url": image_url,
+        "target_desc": target_desc,
+        "target_elements": target_elements or [],
+        "script": script,
+        "locale": locale,
+    }
+    described = describe_image(state)
+    desc = described.get("target_desc") or target_desc or ""
+    elements = described.get("target_elements") or target_elements or []
+    bank = _normalize_phrase_bank(described.get("phrase_bank"), desc)
+    if len(bank) < 3:
+        bank = build_phrase_bank(desc, difficulty="easy", locale=locale)
+    if len(bank) < 3:
+        bank = _generate_phrase_bank(desc, script, locale)
+    limit = 6 if difficulty == "easy" else 3
+    return {
+        "target_desc": desc,
+        "target_elements": elements,
+        "phrase_bank": bank[:limit],
+    }
+
+
 def _extract_vocab_hints(
     target_desc: str | None,
     attempt_num: int,
@@ -149,26 +296,21 @@ def _extract_vocab_hints(
     locale: str = "mandarin",
 ) -> list[dict]:
     """Extract 1-2 vocabulary words from target description to help learner.
-    
+
     Attempt 1: 1 word, Attempt 2: 1-2 more words, Final attempt: none (show reveal instead)
     """
     if not target_desc or attempt_num >= max_attempts:
         return []
-    
-    # Segment the target description
-    words = dct.segment(target_desc)
-    # Keep only words with dictionary entries (actual vocab, not particles)
-    vocab_candidates = []
-    for w in words:
-        if not any(dct.is_hanzi(c) for c in w):
-            continue
-        entries = dct.lookup(w)
-        if entries and len(w) >= 2:  # multi-character words only
-            vocab_candidates.append((w, entries[0]))
-    
+
+    try:
+        vocab_candidates = [
+            (w, e) for w, e in _vocab_candidates(target_desc) if len(w) >= 2
+        ]
+    except FileNotFoundError:
+        return []
     if not vocab_candidates:
         return []
-    
+
     # For attempt 1, give 1 word; attempt 2, give 1-2 more words
     count = 1 if attempt_num == 1 else min(2, len(vocab_candidates))
     # Offset by previous attempts to avoid repeating
@@ -184,7 +326,7 @@ def _extract_vocab_hints(
             "jyutping": entry.jyutping or "",
             "definition": "; ".join(entry.definitions[:2]),  # first 2 definitions
         })
-    
+
     return hints
 
 
