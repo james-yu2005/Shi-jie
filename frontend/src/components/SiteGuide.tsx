@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 const DISMISS_KEY = "shijie-guide-collapsed";
 
@@ -43,30 +44,38 @@ function GuideModal({ onClose }: { onClose: () => void }) {
     document.addEventListener("keydown", onKeyDown);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    panelRef.current?.focus();
+    window.getSelection()?.removeAllRanges();
+    const panel = panelRef.current;
+    if (panel) {
+      panel.scrollTop = 0;
+      panel.focus({ preventScroll: true });
+    }
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = prev;
     };
   }, [onKeyDown]);
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 sm:px-6"
       role="presentation"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" aria-hidden />
+      <div
+        className="fixed inset-0 select-none bg-ink/35 backdrop-blur-md"
+        aria-hidden
+      />
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl border border-ink/10 bg-paper shadow-xl outline-none"
+        className="relative flex max-h-[calc(100vh-3rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-ink/10 bg-paper shadow-xl outline-none sm:max-h-[76vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 flex items-start justify-between gap-3 border-b border-ink/10 bg-paper px-5 py-4">
+        <div className="flex items-start justify-between gap-3 border-b border-ink/10 bg-paper px-5 py-4">
           <div>
             <h2 id={titleId} className="text-lg font-semibold">
               How to use 世界
@@ -85,7 +94,7 @@ function GuideModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <div className="space-y-5 px-5 py-4">
+        <div className="space-y-5 overflow-y-auto px-5 py-4">
           <p className="text-sm leading-relaxed text-ink/80">
             世界 helps you read Chinese text, look up words, save the ones you want to
             remember, and see how your vocabulary fits together. The four tabs across
@@ -140,7 +149,8 @@ function GuideModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -157,13 +167,18 @@ export function SiteGuide() {
     setCollapsed(true);
   }
 
+  function openGuide() {
+    window.getSelection()?.removeAllRanges();
+    setOpen(true);
+  }
+
   return (
     <>
       {collapsed ? (
         <button
           type="button"
-          className="text-sm text-ink/60 underline decoration-ink/20 underline-offset-2 hover:text-ink"
-          onClick={() => setOpen(true)}
+          className="select-none text-sm text-ink/60 underline decoration-ink/20 underline-offset-2 hover:text-ink"
+          onClick={openGuide}
         >
           How the site works
         </button>
@@ -171,8 +186,8 @@ export function SiteGuide() {
         <div className="subtle-card flex items-start gap-3">
           <button
             type="button"
-            className="min-w-0 flex-1 text-left"
-            onClick={() => setOpen(true)}
+            className="min-w-0 flex-1 select-none text-left"
+            onClick={openGuide}
           >
             <span className="text-sm font-medium text-ink">
               New here? See how the site works

@@ -46,6 +46,9 @@ export const POST = withAuth(async (user, req) => {
   const targetElements = Array.isArray(game.targetElements)
     ? (game.targetElements as string[])
     : [];
+  const phraseBank = Array.isArray(game.phraseBank)
+    ? (game.phraseBank as unknown[])
+    : [];
   const prefs = await getUserPreferences(user.id);
 
   let result: GradeResult;
@@ -60,6 +63,7 @@ export const POST = withAuth(async (user, req) => {
         target_desc: game.targetDesc ?? null,
         target_elements: targetElements,
         difficulty: game.difficulty ?? "easy",
+        phrase_bank: phraseBank,
         ...backendLearningPrefs(prefs),
       },
     });

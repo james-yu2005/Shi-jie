@@ -6,7 +6,7 @@ import { withAuth } from "@/lib/auth";
 import { backendFetch } from "@/lib/backend";
 import { backendLearningPrefs, getUserPreferences } from "@/lib/preferences";
 import { dayKey } from "@/lib/daily";
-import type { VocabChip } from "@/lib/types";
+import type { DailyDifficulty, VocabChip } from "@/lib/types";
 
 type PrepareResult = {
   target_desc?: string;
@@ -18,12 +18,15 @@ const Body = z.object({
   difficulty: z.enum(["easy", "medium", "hard"]),
 });
 
+const FULL_BANK = 3;
+
 function asPhraseBank(value: unknown): VocabChip[] | null {
   if (!Array.isArray(value) || value.length === 0) return null;
   return value as VocabChip[];
 }
 
-/** POST /api/daily/bank — ensure target desc + return/cache phrase bank (easy/medium). */
+/** POST /api/daily/bank — ensure target desc + return/cache full phrase bank (3 words).
+ *  The client slices by difficulty: easy 3, medium 1, hard none. */
 export const POST = withAuth(async (user, req) => {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
@@ -41,7 +44,7 @@ export const POST = withAuth(async (user, req) => {
     );
   }
 
-  const difficulty = game.difficulty ?? "easy";
+  const difficulty = (game.difficulty ?? "easy") as DailyDifficulty;
   if (parsed.data.difficulty !== difficulty) {
     return NextResponse.json(
       { error: "Difficulty changed while loading. Please retry." },
@@ -53,10 +56,8 @@ export const POST = withAuth(async (user, req) => {
   }
 
   const cached = asPhraseBank(game.phraseBank);
-  if (cached && cached.length >= 3 && game.targetDesc) {
-    return NextResponse.json({
-      phraseBank: cached.slice(0, 3),
-    });
+  if (cached && cached.length >= FULL_BANK && game.targetDesc) {
+    return NextResponse.json({ phraseBank: cached.slice(0, FULL_BANK) });
   }
 
   const prefs = await getUserPreferences(user.id);
@@ -66,14 +67,13 @@ export const POST = withAuth(async (user, req) => {
 
   let result: PrepareResult;
   try {
-    // Easy and medium intentionally use the same three-word clue bank.
     result = await backendFetch<PrepareResult>("/daily/prepare", {
       method: "POST",
       json: {
         image_url: game.imageUrl,
         target_desc: game.targetDesc ?? null,
         target_elements: targetElements,
-        difficulty: "easy",
+        difficulty,
         ...backendLearningPrefs(prefs),
       },
     });
@@ -85,8 +85,8 @@ export const POST = withAuth(async (user, req) => {
     );
   }
 
-  const phraseBank = (asPhraseBank(result.phrase_bank) ?? []).slice(0, 3);
-  if (phraseBank.length < 3 || !result.target_desc) {
+  const phraseBank = (asPhraseBank(result.phrase_bank) ?? []).slice(0, FULL_BANK);
+  if (phraseBank.length < FULL_BANK || !result.target_desc) {
     console.error("Daily phrase bank preparation returned no image-derived words");
     return NextResponse.json(
       { error: "No phrase suggestions were generated for this image. Please retry." },
@@ -108,6 +108,6 @@ export const POST = withAuth(async (user, req) => {
   });
 
   return NextResponse.json({
-    phraseBank: (asPhraseBank(updated.phraseBank) ?? phraseBank).slice(0, 3),
+    phraseBank: (asPhraseBank(updated.phraseBank) ?? phraseBank).slice(0, FULL_BANK),
   });
 });

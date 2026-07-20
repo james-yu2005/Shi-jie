@@ -223,6 +223,9 @@ class DailyGradeRequest(LearningPrefs):
     target_elements: list[str] = Field(default_factory=list)
     max_attempts: int = 3
     difficulty: str = "easy"
+    # Pre-attempt "starting hints" already shown to the learner; excluded from
+    # post-attempt vocab hints so we never repeat a word they were handed.
+    phrase_bank: list[dict[str, Any]] = Field(default_factory=list)
 
 
 @app.post("/daily/grade")
@@ -239,6 +242,7 @@ def daily_grade(req: DailyGradeRequest) -> dict[str, Any]:
         difficulty=req.difficulty,
         script=req.script,
         locale=req.locale,
+        phrase_bank=req.phrase_bank,
     )
 
 

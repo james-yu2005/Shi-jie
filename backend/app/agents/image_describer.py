@@ -51,24 +51,29 @@ class GameState(TypedDict, total=False):
     phrase_bank: list[dict]
 
 # ---------- difficulty level -----
+# Every difficulty uses the same 65/100 pass threshold; difficulty only changes
+# how generous the scoring is, never the bar required to pass.
+PASS_THRESHOLD = 65
+
 _DIFFICULTY_RULES = {
     "easy": (
-        "Difficulty: EASY. Be lenient and encouraging. Accept paraphrases, synonyms, and" 
-        "alternative sentence structures whenever they communicate the same meaning as the"
-        "target answer. Mark solved if the score >= 45 and the learner covered ~35% of" 
-        "the key elements. Overlook minor grammar slips."
+        "Difficulty: EASY. Be lenient and encouraging when assigning the score. Accept "
+        "paraphrases, synonyms, and alternative sentence structures whenever they "
+        "communicate the same meaning as the target answer, and overlook minor grammar "
+        "slips. Mark solved ONLY if the score >= 65 and the learner covered ~35% of the "
+        "key elements."
     ),
     "medium": (
-        "Difficulty: MEDIUM. Use standard grading. Accept paraphrases, synonyms, and" 
-        "alternative sentence structures whenever they communicate the same meaning as the"
-        "target answer. Mark solved if the score >= 60 and the learner covered ~45 % of" 
-        "the key elements."
+        "Difficulty: MEDIUM. Use standard grading when assigning the score. Accept "
+        "paraphrases, synonyms, and alternative sentence structures whenever they "
+        "communicate the same meaning as the target answer. Mark solved ONLY if the "
+        "score >= 65 and the learner covered ~45% of the key elements."
     ),
     "hard": (
-        "Difficulty: HARD. Use strict grading. Accept paraphrases, synonyms, and" 
-        "alternative sentence structures whenever they communicate the same meaning as the"
-        "target answer. Mark solved if the score >= 75 and the learner covered ~60 % of" 
-        "the key elements."
+        "Difficulty: HARD. Use strict grading when assigning the score. Accept "
+        "paraphrases, synonyms, and alternative sentence structures whenever they "
+        "communicate the same meaning as the target answer. Mark solved ONLY if the "
+        "score >= 65 and the learner covered ~60% of the key elements."
     ),
 }
 
@@ -133,7 +138,8 @@ def _grade_system(difficulty: str, locale: str) -> str:
         "Grade their attempt and respond with STRICT JSON:\n"
         "{\n"
         '  "score": <0-100 integer>,\n'
-        '  "solved": <true per the difficulty rule above>,\n'
+        '  "solved": <true only if score >= 65 AND the difficulty rule above is met, '
+        "else false>,\n"
         '  "missing_elements": [<only MAIN target elements they failed to mention; '
         'omit decorative/secondary details>],\n'
         '  "grammar_errors": [\n'
@@ -171,14 +177,23 @@ def _vocab_candidates(target_desc: str) -> list[tuple[str, Any]]:
     return multi + single
 
 
+def phrase_bank_limit(difficulty: str) -> int:
+    """How many hint words each difficulty may show (callers slice a shared bank)."""
+    if difficulty == "easy":
+        return 3
+    if difficulty == "medium":
+        return 1
+    return 0
+
+
 def build_phrase_bank(
     target_desc: str | None,
     *,
     difficulty: str = "easy",
     locale: str = "mandarin",
 ) -> list[dict]:
-    """Return vocab chips for easy/medium. Hard gets an empty bank."""
-    if not target_desc or difficulty == "hard":
+    """Return vocab chips from the target description (up to 3 for caching)."""
+    if not target_desc:
         return []
     try:
         candidates = _vocab_candidates(target_desc)
@@ -187,8 +202,8 @@ def build_phrase_bank(
         return []
     if not candidates:
         return []
-    # Easy: fuller scaffold; medium: fewer clues; hard: none (handled above).
-    limit = 6 if difficulty == "easy" else 3
+    # Always build the full three-word bank; API/UI slice by difficulty.
+    limit = 3
     take = min(limit, len(candidates))
     bank: list[dict] = []
     for word, entry in candidates[:take]:
@@ -259,13 +274,12 @@ def prepare(
     script: str = "simplified",
     locale: str = "mandarin",
 ) -> dict:
-    """Ensure a target description exists, then build a phrase bank (no grading)."""
-    if difficulty == "hard":
-        return {
-            "target_desc": target_desc or "",
-            "target_elements": target_elements or [],
-            "phrase_bank": [],
-        }
+    """Ensure a target description exists, then build a phrase bank (no grading).
+
+    Always caches up to 3 hint words so difficulty can be changed before the
+    first attempt; callers slice with ``phrase_bank_limit(difficulty)``.
+    """
+    _ = difficulty  # limit applied by API; full bank is always prepared
     state: GameState = {
         "image_url": image_url,
         "target_desc": target_desc,
@@ -281,11 +295,10 @@ def prepare(
         bank = build_phrase_bank(desc, difficulty="easy", locale=locale)
     if len(bank) < 3:
         bank = _generate_phrase_bank(desc, script, locale)
-    limit = 6 if difficulty == "easy" else 3
     return {
         "target_desc": desc,
         "target_elements": elements,
-        "phrase_bank": bank[:limit],
+        "phrase_bank": bank[:3],
     }
 
 
@@ -294,10 +307,22 @@ def _extract_vocab_hints(
     attempt_num: int,
     max_attempts: int,
     locale: str = "mandarin",
+    *,
+    attempt_text: str = "",
+    starting_hints: list[dict] | None = None,
+    missing_elements: list[str] | None = None,
 ) -> list[dict]:
-    """Extract 1-2 vocabulary words from target description to help learner.
+    """Pick 1-2 genuinely useful vocabulary words to teach after an attempt.
 
-    Attempt 1: 1 word, Attempt 2: 1-2 more words, Final attempt: none (show reveal instead)
+    A useful hint is a real word from the image's target description that the
+    learner has NOT already been handed. So we exclude:
+      - words already given as pre-attempt "starting hints" (the phrase bank),
+      - words the learner already wrote in their attempt.
+    Remaining candidates that describe what the learner missed are surfaced
+    first, so the hints stay relevant to the image. Every returned hint carries
+    its English translation so it can be saved as a flashcard / graph node.
+
+    Attempt 1: 1 word, Attempt 2: up to 2 words, Final attempt: none (reveal instead).
     """
     if not target_desc or attempt_num >= max_attempts:
         return []
@@ -311,20 +336,40 @@ def _extract_vocab_hints(
     if not vocab_candidates:
         return []
 
-    # For attempt 1, give 1 word; attempt 2, give 1-2 more words
-    count = 1 if attempt_num == 1 else min(2, len(vocab_candidates))
-    # Offset by previous attempts to avoid repeating
-    start_idx = (attempt_num - 1)
-    hints = []
-    for i in range(start_idx, min(start_idx + count, len(vocab_candidates))):
-        if i >= len(vocab_candidates):
-            break
-        word, entry = vocab_candidates[i]
+    # Words the learner should not be re-taught: already-revealed starting hints
+    # and anything they already used in their own attempt.
+    excluded: set[str] = set()
+    for chip in starting_hints or []:
+        hanzi = str(chip.get("hanzi", "")).strip()
+        if hanzi:
+            excluded.add(hanzi)
+    attempt_text = attempt_text or ""
+
+    fresh = [
+        (w, e)
+        for w, e in vocab_candidates
+        if w not in excluded and w not in attempt_text
+    ]
+    if not fresh:
+        return []
+
+    # Prioritise words tied to the elements the learner missed so the hint is
+    # clearly relevant to the image; keep the rest as fallback.
+    missing_blob = "".join(missing_elements or [])
+    relevant = [(w, e) for w, e in fresh if w in missing_blob]
+    ordered = relevant + [pair for pair in fresh if pair not in relevant]
+
+    count = 1 if attempt_num == 1 else 2
+    hints: list[dict] = []
+    for word, entry in ordered[:count]:
+        definition = "; ".join(entry.definitions[:2]).strip()
+        if not definition:
+            continue  # a hint with no English translation is not useful
         hints.append({
             "hanzi": word,
             "pinyin": dct.romanization_for(entry, "mandarin"),
             "jyutping": entry.jyutping or "",
-            "definition": "; ".join(entry.definitions[:2]),  # first 2 definitions
+            "definition": definition,
         })
 
     return hints
@@ -347,19 +392,28 @@ def grade_attempt(state: GameState) -> GameState:
     # safety: force reveal on last attempt
     if state.get("attempt_number", 1) >= state.get("max_attempts", 3):
         data.setdefault("reveal", state.get("target_desc"))
-    
+
+    # Enforce a uniform 65/100 pass bar regardless of what the LLM returned.
+    score = int(data.get("score", 0))
+    solved = bool(data.get("solved", False)) and score >= PASS_THRESHOLD
+
+    missing_elements = list(data.get("missing_elements", []) or [])
+
     # Extract vocabulary hints to help learner
     vocab_hints = _extract_vocab_hints(
         state.get("target_desc"),
         state.get("attempt_number", 1),
         state.get("max_attempts", 3),
         state.get("locale", "mandarin"),
+        attempt_text=state.get("attempt_text", ""),
+        starting_hints=state.get("phrase_bank"),
+        missing_elements=missing_elements,
     )
-    
+
     return {
-        "score": int(data.get("score", 0)),
-        "solved": bool(data.get("solved", False)),
-        "missing_elements": list(data.get("missing_elements", []) or []),
+        "score": score,
+        "solved": solved,
+        "missing_elements": missing_elements,
         "grammar_errors": list(data.get("grammar_errors", []) or []),
         "hint": str(data.get("hint", "") or ""),
         "reveal": data.get("reveal"),
@@ -396,6 +450,7 @@ def run(
     difficulty: str = "easy",
     script: str = "simplified",
     locale: str = "mandarin",
+    phrase_bank: list[dict] | None = None,
 ) -> dict:
     """Run one grading turn; returns the merged final state as a plain dict."""
     init: GameState = {
@@ -408,6 +463,7 @@ def run(
         "difficulty": difficulty,
         "script": script,
         "locale": locale,
+        "phrase_bank": phrase_bank or [],
     }
     out = get_graph().invoke(init)
     # Surface the cached/derived target so the caller can persist it.

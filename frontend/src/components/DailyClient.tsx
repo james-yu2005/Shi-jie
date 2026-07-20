@@ -17,16 +17,23 @@ import { Hanzi } from "./Hanzi";
 import { useLearningPreferences } from "@/contexts/LearningPreferencesContext";
 
 type GameWithMax = DailyGame & { maxAttempts: number };
+type SaveState = "idle" | "saving" | "ok" | "err";
 
 const DIFFICULTIES: DailyDifficulty[] = ["easy", "medium", "hard"];
 
 const SEGMENT_BTN =
   "min-h-[44px] rounded-md px-3 py-2 text-sm capitalize transition hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent data-[active=true]:bg-ink data-[active=true]:text-white data-[active=true]:hover:bg-ink";
 
+function hintLimit(difficulty: DailyDifficulty): number {
+  if (difficulty === "easy") return 3;
+  if (difficulty === "medium") return 1;
+  return 0;
+}
+
 function scoreBadgeClass(attempt: GameAttempt): string {
   const base = "rounded-full px-2 py-0.5 text-xs font-medium";
   if (attempt.solved) return `${base} bg-green-100 text-green-700`;
-  if (attempt.score >= 60) return `${base} bg-yellow-100 text-yellow-800`;
+  if (attempt.score >= 65) return `${base} bg-yellow-100 text-yellow-800`;
   return `${base} bg-red-100 text-red-700`;
 }
 
@@ -64,6 +71,7 @@ export function DailyClient() {
   const [bankError, setBankError] = useState<string | null>(null);
   const [changingDifficulty, setChangingDifficulty] = useState(false);
   const [bankReloadKey, setBankReloadKey] = useState(0);
+  const [revealedCount, setRevealedCount] = useState(0);
 
   useEffect(() => {
     if (game) setDifficulty(game.difficulty ?? "easy");
@@ -72,7 +80,12 @@ export function DailyClient() {
   useEffect(() => {
     setPhraseBank(game?.phraseBank?.length ? game.phraseBank : null);
     setBankError(null);
+    setRevealedCount(0);
   }, [game?.id, game?.phraseBank]);
+
+  useEffect(() => {
+    setRevealedCount(0);
+  }, [difficulty]);
 
   // Prefetch phrase bank on easy/medium before the first attempt. Hard stays blank.
   useEffect(() => {
@@ -113,7 +126,7 @@ export function DailyClient() {
               continue;
             }
             if (!cancelled) {
-              setBankError("The image phrase bank is unavailable right now.");
+              setBankError("Hint words are unavailable right now.");
             }
           }
         }
@@ -215,8 +228,10 @@ export function DailyClient() {
   const remaining = game.maxAttempts - game.attemptsUsed;
   const finished = game.solved || remaining <= 0;
   const difficultyLocked = game.attemptsUsed > 0;
-  const showPhraseBank = (difficulty === "easy" || difficulty === "medium") && !finished;
-  const visibleBank = (phraseBank ?? []).slice(0, 3);
+  const showHints = !finished && hintLimit(difficulty) > 0;
+  const availableHints = (phraseBank ?? []).slice(0, hintLimit(difficulty));
+  const visibleHints = availableHints.slice(0, revealedCount);
+  const canRevealMore = revealedCount < availableHints.length;
   const statusLabel = finished
     ? game.solved ? "solved" : "out of attempts"
     : `${remaining} attempt${remaining === 1 ? "" : "s"} left`;
@@ -267,7 +282,7 @@ export function DailyClient() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:-mx-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.35fr)] lg:gap-8 xl:-mx-8">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.45fr)] lg:gap-6">
         <div className="overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm lg:sticky lg:top-[var(--header-offset)] lg:self-start">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -289,10 +304,10 @@ export function DailyClient() {
               </span>
             </div>
             <textarea
-              className="textarea hanzi min-h-[140px] text-base sm:min-h-[160px]"
+              className="textarea hanzi min-h-[200px] text-base sm:min-h-[260px]"
               placeholder={
-                showPhraseBank
-                  ? "Tap words below, or type your own…"
+                showHints
+                  ? "Reveal a hint word below, or type your own…"
                   : "用中文描述这张图片…"
               }
               value={text}
@@ -300,10 +315,32 @@ export function DailyClient() {
               disabled={finished || submitting}
             />
 
-            {showPhraseBank && (
-              <div className="mt-3 space-y-2 phrase-bank-enter">
+            {showHints && (
+              <div className="mt-3 space-y-3 phrase-bank-enter">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="label">Hint words</span>
+                    <p className="mt-0.5 text-xs text-ink/50">
+                      {difficulty === "easy"
+                        ? "Up to 3 words — reveal them one at a time"
+                        : "1 word available — reveal when you want it"}
+                    </p>
+                  </div>
+                  {canRevealMore && !bankLoading && availableHints.length > 0 && (
+                    <button
+                      type="button"
+                      className="btn-outline text-sm"
+                      onClick={() => setRevealedCount((n) => n + 1)}
+                    >
+                      {revealedCount === 0
+                        ? "Reveal a hint"
+                        : `Reveal next (${revealedCount}/${availableHints.length})`}
+                    </button>
+                  )}
+                </div>
+
                 {bankLoading && (
-                  <p className="text-sm text-ink/60">Loading words from today’s image…</p>
+                  <p className="text-sm text-ink/60">Loading hint words from today’s image…</p>
                 )}
                 {bankError && (
                   <div className="flex flex-wrap items-center gap-2 text-sm text-ink/70">
@@ -320,30 +357,30 @@ export function DailyClient() {
                     </button>
                   </div>
                 )}
-                {visibleBank.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {visibleBank.map((chip, i) => (
-                      <button
+
+                {visibleHints.length > 0 && (
+                  <div className="space-y-2">
+                    {visibleHints.map((chip, i) => (
+                      <HintWordCard
                         key={chip.hanzi}
-                        type="button"
-                        className="phrase-chip rounded-md border border-ink/15 bg-paper px-2.5 py-1.5 text-left transition hover:border-accent/40 hover:bg-accent/[0.06] active:scale-95 disabled:opacity-40"
-                        style={{ animationDelay: `${i * 45}ms` }}
-                        onClick={() => insertChip(chip.hanzi)}
+                        chip={chip}
+                        index={i}
+                        audio={preferences.audio}
                         disabled={submitting}
-                        title={chip.definition}
-                      >
-                        <span className="hanzi text-base leading-none">
-                          <Hanzi text={chip.hanzi} />
-                        </span>
-                        <span className="mt-0.5 block text-[10px] text-ink/50">
-                          {preferences.audio === "cantonese" && chip.jyutping
-                            ? chip.jyutping
-                            : chip.pinyin}
-                        </span>
-                      </button>
+                        onInsert={() => insertChip(chip.hanzi)}
+                      />
                     ))}
                   </div>
                 )}
+
+                {!bankLoading &&
+                  !bankError &&
+                  availableHints.length > 0 &&
+                  revealedCount === 0 && (
+                    <p className="text-sm text-ink/55">
+                      Hints stay hidden until you reveal them.
+                    </p>
+                  )}
               </div>
             )}
 
@@ -385,6 +422,163 @@ export function DailyClient() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function useVocabSaver(chip: VocabChip, notes: string) {
+  const [flashState, setFlashState] = useState<SaveState>("idle");
+  const [dictState, setDictState] = useState<SaveState>("idle");
+
+  const addFlashcard = useCallback(async () => {
+    setFlashState("saving");
+    try {
+      await apiJson("/api/bucket", {
+        method: "POST",
+        json: {
+          hanzi: chip.hanzi,
+          pinyin: chip.pinyin,
+          jyutping: chip.jyutping ?? "",
+          definition: chip.definition,
+          notes,
+        },
+      });
+      setFlashState("ok");
+    } catch {
+      setFlashState("err");
+    }
+  }, [chip, notes]);
+
+  const addDictionary = useCallback(async () => {
+    setDictState("saving");
+    try {
+      const j = await apiJson<{ created: boolean }>("/api/kg", {
+        method: "POST",
+        json: {
+          hanzi: chip.hanzi,
+          pinyin: chip.pinyin,
+          jyutping: chip.jyutping ?? "",
+          definition: chip.definition,
+          notes,
+        },
+      });
+      setDictState("ok");
+      if (j.created) markFirstWorldStep("graph");
+    } catch {
+      setDictState("err");
+    }
+  }, [chip, notes]);
+
+  return { flashState, dictState, addFlashcard, addDictionary };
+}
+
+function SaveVocabButtons({
+  flashState,
+  dictState,
+  addFlashcard,
+  addDictionary,
+}: ReturnType<typeof useVocabSaver>) {
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      <button
+        type="button"
+        className="btn-outline px-2.5 py-1 text-xs"
+        onClick={addFlashcard}
+        disabled={flashState === "saving" || flashState === "ok"}
+      >
+        {flashState === "ok"
+          ? "Flashcards ✓"
+          : flashState === "saving"
+            ? "Saving…"
+            : flashState === "err"
+              ? "Retry flashcards"
+              : "+ Flashcards"}
+      </button>
+      <button
+        type="button"
+        className="btn-outline px-2.5 py-1 text-xs"
+        onClick={addDictionary}
+        disabled={dictState === "saving" || dictState === "ok"}
+        title="Add to your knowledge graph (personal dictionary)"
+      >
+        {dictState === "ok"
+          ? "Dictionary ✓"
+          : dictState === "saving"
+            ? "Saving…"
+            : dictState === "err"
+              ? "Retry dictionary"
+              : "+ Dictionary"}
+      </button>
+    </div>
+  );
+}
+
+function HintWordCard({
+  chip,
+  index,
+  audio,
+  disabled,
+  onInsert,
+}: {
+  chip: VocabChip;
+  index: number;
+  audio: string;
+  disabled: boolean;
+  onInsert: () => void;
+}) {
+  const saver = useVocabSaver(chip, "From daily game hint");
+  const romanization =
+    audio === "cantonese" && chip.jyutping ? chip.jyutping : chip.pinyin;
+
+  return (
+    <div
+      className="phrase-chip rounded-lg border border-ink/12 bg-paper p-3"
+      style={{ animationDelay: `${index * 45}ms` }}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <button
+          type="button"
+          className="min-w-0 flex-1 text-left transition hover:opacity-80 active:scale-[0.99] disabled:opacity-40"
+          onClick={onInsert}
+          disabled={disabled}
+          title="Tap to insert into your description"
+        >
+          <span className="hanzi text-xl font-semibold leading-none">
+            <Hanzi text={chip.hanzi} />
+          </span>
+          {romanization && (
+            <span className="mt-1 block text-xs text-ink/50">{romanization}</span>
+          )}
+        </button>
+        <span className="text-[10px] uppercase tracking-wide text-ink/40">
+          Tap word to use
+        </span>
+      </div>
+
+      {chip.definition && (
+        <p className="mt-2 text-sm text-ink/80">{chip.definition}</p>
+      )}
+
+      <SaveVocabButtons {...saver} />
+    </div>
+  );
+}
+
+function VocabHintCard({ chip }: { chip: VocabChip }) {
+  const saver = useVocabSaver(chip, "From daily game hint");
+  return (
+    <div className="rounded bg-white p-2 shadow-sm">
+      <div className="hanzi text-lg font-semibold">
+        <Hanzi text={chip.hanzi} />
+      </div>
+      <RomanizationLines
+        pinyin={chip.pinyin}
+        jyutping={chip.jyutping ?? ""}
+        compact
+        className="mt-1"
+      />
+      <div className="mt-1 text-sm text-ink/80">{chip.definition}</div>
+      <SaveVocabButtons {...saver} />
     </div>
   );
 }
@@ -508,18 +702,24 @@ const AttemptCard = memo(function AttemptCard({
         <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
           <div className="label mb-2 text-blue-900">Learn these words</div>
           <div className="space-y-2">
-            {attempt.vocab_hints.map((vocab, i) => (
-              <div key={i} className="rounded bg-white p-2 shadow-sm">
-                <div className="hanzi text-lg font-semibold"><Hanzi text={vocab.hanzi} /></div>
-                <RomanizationLines
-                  pinyin={vocab.pinyin}
-                  jyutping={vocab.jyutping ?? ""}
-                  compact
-                  className="mt-1"
-                />
-                <div className="mt-1 text-sm text-ink/80">{vocab.definition}</div>
-              </div>
-            ))}
+            {example
+              ? attempt.vocab_hints.map((vocab, i) => (
+                  <div key={i} className="rounded bg-white p-2 shadow-sm">
+                    <div className="hanzi text-lg font-semibold">
+                      <Hanzi text={vocab.hanzi} />
+                    </div>
+                    <RomanizationLines
+                      pinyin={vocab.pinyin}
+                      jyutping={vocab.jyutping ?? ""}
+                      compact
+                      className="mt-1"
+                    />
+                    <div className="mt-1 text-sm text-ink/80">{vocab.definition}</div>
+                  </div>
+                ))
+              : attempt.vocab_hints.map((vocab, i) => (
+                  <VocabHintCard key={`${vocab.hanzi}-${i}`} chip={vocab} />
+                ))}
           </div>
         </div>
       )}
